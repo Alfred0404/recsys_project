@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.data.holdings import running_positions
+
 RAW = Path("dataset/FAR-Trans")
 OUT = Path("dataset/processed")
 
@@ -56,6 +58,8 @@ def checks(t: dict[str, pd.DataFrame]) -> list[tuple[str, object]]:
         ("Transacted ISINs missing from asset_information", int((~tx["ISIN"].drop_duplicates().isin(assets["ISIN"])).sum())),
         ("Transacting customers missing from customer_information",
          int((~tx["customerID"].drop_duplicates().isin(cust["customerID"])).sum())),
+        ("Customer-asset pairs selling more than their known position (clipped to 0)",
+         len(running_positions(tx).query("raw_position < 0")[["customerID", "ISIN"]].drop_duplicates())),
         ("Customers with several profile records", int((cust.groupby("customerID").size() > 1).sum())),
         ("Assets with several description records", int((assets.groupby("ISIN").size() > 1).sum())),
     ]
