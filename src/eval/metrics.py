@@ -26,7 +26,7 @@ def evaluate(ranked: dict, test: pd.DataFrame, ndcg_k: int = 10, recall_k: int =
     for user, relevant in targets.items():
         ranking = list(ranked.get(user, []))
         ndcg.append(ndcg_at_k(ranking, relevant, ndcg_k))
-        recall.append(recall_k_value(ranking, relevant, recall_k))
+        recall.append(recall_at_k(ranking, relevant, recall_k))
     n = len(targets)
     return {
         f"ndcg@{ndcg_k}": sum(ndcg) / n if n else 0.0,
@@ -34,9 +34,6 @@ def evaluate(ranked: dict, test: pd.DataFrame, ndcg_k: int = 10, recall_k: int =
         "n_users": n,
         "coverage_users": sum(1 for u in targets.index if ranked.get(u)) / n if n else 0.0,
     }
-
-
-recall_k_value = recall_at_k
 
 
 def _owned(seen: pd.DataFrame) -> dict:
