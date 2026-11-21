@@ -13,8 +13,8 @@ def build_graph(train: pd.DataFrame):
     pairs = train[["customerID", "ISIN"]].drop_duplicates()
     user2idx = {u: i for i, u in enumerate(sorted(pairs["customerID"].unique()))}
     item2idx = {a: i for i, a in enumerate(sorted(pairs["ISIN"].unique()))}
-    users = torch.as_tensor(pairs["customerID"].map(user2idx).to_numpy(), dtype=torch.long)
-    items = torch.as_tensor(pairs["ISIN"].map(item2idx).to_numpy(), dtype=torch.long)
+    users = torch.as_tensor(pairs["customerID"].map(user2idx).to_numpy(copy=True), dtype=torch.long)
+    items = torch.as_tensor(pairs["ISIN"].map(item2idx).to_numpy(copy=True), dtype=torch.long)
     return torch.stack([users, items]), user2idx, item2idx
 
 

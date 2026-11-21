@@ -2,14 +2,66 @@
 
 Projet d'équipe : recommandation d'actifs par GNN (NLGCL), re-ranking selon la théorie moderne du portefeuille (MPT) et filtre de risque, avec profil et explications par LLM. Les documents de cadrage sont dans [docs/](docs/).
 
-## Installation
+## Reproduire l'expérience et lancer la démo
+
+Depuis le dossier du dépôt, avec Python 3.11 ou plus récent :
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m src.data.download
+python -m src.data.load_and_check
+python -m src.train.run
+python -m pytest
+```
+
+Sous macOS ou Linux, activez l'environnement avec `source .venv/bin/activate`.
+Le téléchargement FAR-Trans vient de l'[Université de Glasgow](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0).
+Les données et les artefacts générés restent sous `dataset/`. Le run écrit
+`loss.csv`, `metrics.json`, `checkpoint.pt`, `model.npz` et un snapshot financier
+dans `dataset/experiment/`. Le graphe utilise uniquement les achats d'entraînement.
+Le checkpoint est choisi sur la validation, puis les modèles et références sont
+comparés sur les mêmes utilisateurs et le même catalogue de test.
+
+Ouvrez deux terminaux avec l'environnement activé, puis lancez l'API et l'interface :
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python -m src.data.load_and_check   # nécessite dataset/FAR-Trans/*.csv (jamais commité)
-pytest
+python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 ```
+
+```bash
+python -m streamlit run app/streamlit_app.py
+```
+
+Ouvrez l'adresse affichée par Streamlit (port 8501 par défaut). Le serveur charge
+les embeddings du run et les tables financières datées au démarrage. Le catalogue
+d'expérimentation est historique. La démo sert à observer les compromis du classement.
+
+Sélectionnez un actif du catalogue et un montant, puis cliquez sur **Afficher les
+suggestions**. Avec un portefeuille connu, l'API moyenne les embeddings des actifs
+détenus en les pondérant par montant. Le questionnaire fixe le plafond de risque.
+Quand les prix nécessaires sont disponibles, les candidats sont reclassés en
+simulant une allocation de 10 % au nouvel actif. L'ordre de la réponse correspond
+au classement final. Le champ `score` mesure la pertinence issue du modèle.
+Les actions de la démo sont journalisées dans `dataset/interactions.sqlite3`.
+
+### Vérification facultative du profil
+
+Avec un modèle Ollama déjà lancé, définissez `RECSYS_OLLAMA_MODEL` avant de
+démarrer l'API. Pour un serveur local compatible avec l'API Chat Completions,
+définissez `RECSYS_OPENAI_COMPAT_URL` (URL complète du point d'accès) et
+`RECSYS_PROFILE_MODEL`. L'écran propose alors la vérification du profil.
+Les valeurs affichées restent validées par les règles du questionnaire. La
+vérification LLM s'exécute à la demande, séparément de `/recommend`.
+
+```bash
+python -m src.eval.profile_benchmark
+```
+
+Ce test compare la première réponse du modèle et le profil vérifié sur neuf cas
+synthétiques. Le [rapport Week 3](docs/Finance_Recommendation_Week3_Status_Report.pdf)
+contient les mesures de l'expérience et de la démo.
 
 ## Propriétaires des dossiers
 

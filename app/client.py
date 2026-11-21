@@ -1,4 +1,4 @@
-"""Client for POST /recommend, with a mock response while the real API is not up."""
+"""HTTP client shared by the Streamlit app and local integration checks."""
 import os
 
 import requests
@@ -21,6 +21,28 @@ def mock_recommend(payload: dict) -> dict:
 def recommend(payload: dict, use_mock: bool = False) -> dict:
     if use_mock:
         return mock_recommend(payload)
-    r = requests.post(f"{API_URL}/recommend", json=payload, timeout=60)
+    r = requests.post(f"{API_URL}/recommend", json=payload, timeout=10)
     r.raise_for_status()
     return r.json()
+
+
+def catalog() -> list[dict]:
+    r = requests.get(f"{API_URL}/assets", timeout=3)
+    r.raise_for_status()
+    return r.json()
+
+
+def review_profile(payload: dict) -> dict:
+    response = requests.post(f"{API_URL}/profile", json=payload, timeout=65)
+    response.raise_for_status()
+    return response.json()
+
+
+def log_interaction(session_id: str, event: str, isin: str | None = None) -> int:
+    response = requests.post(
+        f"{API_URL}/log_interaction",
+        json={"session_id": session_id, "event": event, "isin": isin},
+        timeout=2,
+    )
+    response.raise_for_status()
+    return response.json()["id"]
