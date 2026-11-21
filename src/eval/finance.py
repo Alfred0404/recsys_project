@@ -9,7 +9,7 @@ import pandas as pd
 from src.data.asset_returns import asset_risk, covariance, expected_returns, returns_matrix
 from src.data.holdings import holdings_at, latest_before
 from src.llm.profile import RISK_LEVELS
-from src.rerank.mpt import mpt_rerank, portfolio_impact, risk_filter
+from src.rerank.mpt import mpt_rerank, portfolio_impact, risk_filter, risk_rerank
 
 RISK_LABELS = {"conservative": 1, "income": 2, "balanced": 3, "aggressive": 4}
 ALLOCATION = 0.10
@@ -79,7 +79,7 @@ def select_examples(examples, warm_users):
             yield {"cohort": category, **row}
 
 
-def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25):
+def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25, tolerance=0, penalty=0.5):
     tables = snapshot(tx, cutoff, processed)
     mu = tables["mu"]["mu"].dropna()
     sigma = tables["sigma"]
@@ -89,11 +89,11 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25)
     labels = tables["customers"].set_index("customerID")["riskLevel"].to_dict()
     exposures = _exposures(tables["holdings"])
 
-    filtered_rankings, reranked_rankings = {}, {}
+    filtered_rankings, reranked_rankings, tolerant_rankings = {}, {}, {}
     examples = {}
     variance_pairs = []
     fully_covered_users = 0
-    risk_counts = {name: Counter() for name in ("nlgcl", "risk_only", "mpt_risk")}
+    risk_counts = {name: Counter() for name in ("nlgcl", "risk_only", "mpt_risk", "risk_tolerant")}
     level_source = Counter()
     for user, scores in scored.items():
         label = str(labels.get(user, "")).casefold()
@@ -114,8 +114,15 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25)
             reranked = mpt_rerank(allowed, relevance, holdings, mu, sigma, gamma, lam, allocation=ALLOCATION)
         filtered_rankings[user] = allowed
         reranked_rankings[user] = reranked
+        if tolerance:
+            tolerant_rankings[user] = risk_rerank(
+                relevance, relevance, classes, ceiling, tolerance=tolerance, penalty=penalty,
+            )
 
-        for name, items in (("nlgcl", list(relevance)), ("risk_only", allowed), ("mpt_risk", reranked)):
+        for name, items in (
+            ("nlgcl", list(relevance)), ("risk_only", allowed), ("mpt_risk", reranked),
+            ("risk_tolerant", tolerant_rankings.get(user, [])),
+        ):
             risk_counts[name].update(_risk_counts(items[:10], classes, ceiling))
 
         impact = pd.DataFrame()
@@ -149,10 +156,12 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25)
     summary = {
         "as_of": cutoff.isoformat(),
         "mpt_weight": lam,
+        "risk_tolerance": tolerance,
+        "risk_penalty": penalty,
         "allocation": ALLOCATION,
         "risk_level_source": dict(level_source),
         "fully_covered_portfolio_users": int(fully_covered_users),
-        "top10_risk": {name: _summarize_risk(counts) for name, counts in risk_counts.items()},
+        "top10_risk": {name: _summarize_risk(counts) for name, counts in risk_counts.items() if counts["total"]},
         "paired_top1_variance": {
             "users": len(variance),
             "risk_only_mean_change": float(variance[:, 0].mean()) if len(variance) else None,
@@ -161,4 +170,7 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25)
         },
         "examples": list(select_examples(examples, warm_users)),
     }
-    return summary, {"risk_only": filtered_rankings, "mpt_risk": reranked_rankings}
+    rankings = {"risk_only": filtered_rankings, "mpt_risk": reranked_rankings}
+    if tolerance:
+        rankings["risk_tolerant"] = tolerant_rankings
+    return summary, rankings

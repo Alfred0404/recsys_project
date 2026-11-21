@@ -248,7 +248,11 @@ def run(args):
     # Selection has finished before generating any rankings on the test period.
     nlgcl_embeddings = embeddings_for(nlgcl, experiment)
     lightgcn_embeddings = embeddings_for(lightgcn, experiment)
-    scored = experiment.rank(experiment.test, nlgcl_embeddings, experiment.test_history)
+    # Score the whole catalogue so the risk filter can reach suitable assets ranked
+    # beyond the first hundred; evaluation still reads the top of each list.
+    scored = experiment.rank(
+        experiment.test, nlgcl_embeddings, experiment.test_history, k=len(experiment.item_index),
+    )
     light_ranked = experiment.rank(experiment.test, lightgcn_embeddings, experiment.test_history, k=20)
     users = sorted(experiment.test["customerID"].unique())
     available = set(experiment.item_index)
@@ -282,6 +286,7 @@ def run(args):
 
         finance, financial_rankings = evaluate_reranking(
             scored, tx, experiment.t2, args.processed_dir, args.out, set(experiment.user_index), args.mpt_weight,
+            tolerance=args.risk_tolerance, penalty=args.risk_penalty,
         )
         summary["finance"] = finance
         rankings.update(financial_rankings)
@@ -319,6 +324,10 @@ def main():
     parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--contrastive-weight", type=float, default=0.05)
     parser.add_argument("--mpt-weight", type=float, default=0.25, help="Pre-specified MPT weight for the test ablation")
+    parser.add_argument("--risk-tolerance", type=int, default=0,
+                        help="Classes above the ceiling allowed in the penalized risk ablation (0 disables it)")
+    parser.add_argument("--risk-penalty", type=float, default=0.5,
+                        help="Normalized relevance lost per class above the ceiling")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--t1", help="Manual train cutoff (before validation)")
     parser.add_argument("--t2", help="Manual test cutoff")
@@ -330,6 +339,8 @@ def main():
         parser.error("Learning rate and contrastive weight must be finite and positive.")
     if not 0 <= args.mpt_weight <= 1:
         parser.error("MPT weight must be between zero and one.")
+    if not 0 <= args.risk_tolerance <= 6 or not np.isfinite(args.risk_penalty) or args.risk_penalty < 0:
+        parser.error("Risk tolerance must be in [0, 6] and the risk penalty non-negative.")
     run(args)
 
 

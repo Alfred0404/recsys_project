@@ -56,6 +56,25 @@ def test_unseen_portfolios_use_popularity_and_invalid_amounts_are_rejected(demo_
     assert client.post("/recommend", json={"holdings": {"A": -2}}).status_code == 422
 
 
+def test_a_low_ceiling_still_fills_ten_suggestions_from_deep_in_the_catalogue(tmp_path):
+    # Only the 12 least relevant of 121 assets are suitable for a cautious profile.
+    identifiers = [f"I{i:03d}" for i in range(121)]
+    model = tmp_path / "model.npz"
+    np.savez(model, item_ids=np.array(identifiers), item_embeddings=np.linspace(1, 0.1, 121)[:, None],
+             popular_order=np.arange(121))
+    risk_classes = [7] * 109 + [2] * 12
+    pd.DataFrame({"ISIN": identifiers, "risk_class": risk_classes}).to_parquet(tmp_path / "asset_risk.parquet")
+    pd.DataFrame({"ISIN": identifiers, "assetName": identifiers}).to_parquet(tmp_path / "assets.parquet")
+    pd.DataFrame({"mu": np.full(121, 0.02)}, index=identifiers).to_parquet(tmp_path / "mu.parquet")
+    pd.DataFrame(np.eye(121) * 0.04, index=identifiers, columns=identifiers).to_parquet(tmp_path / "sigma.parquet")
+    with TestClient(create_app(model, tmp_path, tmp_path / "demo.sqlite3")) as client:
+        response = client.post("/recommend", json={"holdings": {"I000": 1000},
+                                                   "answers": {key: 0 for key in QUESTIONNAIRE}})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 10
+    assert all(item["risk_class"] == 2 for item in items)
+
 def test_profile_reflection_checks_its_output_and_can_fall_back():
     incorrect = {"risk_level": 4, "ceiling": 7, "gamma": 1.0, "concentrated": True}
     correct = {"risk_level": 1, "ceiling": 3, "gamma": 4.0, "concentrated": True}
