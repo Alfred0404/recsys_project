@@ -39,7 +39,7 @@ def holdings_at(tx: pd.DataFrame, prices: pd.DataFrame, before) -> pd.DataFrame:
     h = h[h["units"] > EPS].reset_index(drop=True)
     last_price = (prices[prices["timestamp"] < before].sort_values("timestamp")
                   .groupby("ISIN")["closePrice"].last())
-    h["value"] = h["units"] * h["ISIN"].map(last_price)
+    h["value"] = h["units"] * h["ISIN"].map(last_price).astype(float)
     h["weight"] = h["value"] / h.groupby("customerID")["value"].transform("sum")
 
     return h
