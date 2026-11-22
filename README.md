@@ -63,6 +63,34 @@ Ce test compare la première réponse du modèle et le profil vérifié sur neuf
 synthétiques. Le [rapport Week 3](docs/Finance_Recommendation_Week3_Status_Report.pdf)
 contient les mesures de l'expérience et de la démo.
 
+## Données
+
+[FAR-Trans](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0) : transactions réelles de clients particuliers d'une banque grecque, du 2 janvier 2018 au 30 novembre 2022. `python -m src.data.load_and_check` régénère ces chiffres dans `dataset/processed/stats.md`.
+
+| Mesure | Valeur |
+|---|---|
+| Transactions (achats / ventes) | 388 048 (228 913 / 159 135) |
+| Clients / actifs achetés / actifs cotés | 29 090 / 320 / 807 |
+| Couples client-actif distincts (achats) | 89 884 |
+| Densité de la matrice d'achats | 0,97 % |
+| Actifs distincts achetés par client (médiane / moyenne) | 1 / 3,09 |
+| Part des achats sur les 10 actifs les plus achetés | 48,2 % |
+
+Une interaction est un **achat**. Les ventes servent seulement à reconstruire les portefeuilles.
+
+**Seuils retenus**
+
+| Étape | Règle |
+|---|---|
+| Filtrage clients / actifs | Aucun : tous les acheteurs sont gardés. Un filtre « 3 actifs par client » n'en laisserait que 8 842 sur 29 090 ; les clients avec peu d'actifs sont le cas démarrage à froid |
+| Split temporel (`src/eval/split.py`) | 70 / 15 / 15 % des dates d'achat : train avant le 16/07/2021, validation jusqu'au 23/02/2022, test ensuite. Validation et test ne gardent que les nouveaux couples client-actif |
+| Taille du split | Train 158 053 achats, 25 355 clients, 288 actifs. Test 6 134 achats, 3 455 clients, dont 1 035 absents du train |
+| Portefeuilles (`src/data/holdings.py`) | Vente supérieure à la position connue : position ramenée à 0 (556 couples, parts achetées avant 2018). Le même jour, achats avant ventes. Transactions partagées (comptes joints probables) : gardées pour chaque co-titulaire |
+| Prix (`src/data/asset_returns.py`) | Saut de plus de 50 % qui revient à ±20 % en 5 cotations : erreur de prix effacée (6 cas). Trous de 5 jours au plus comblés par le dernier prix |
+| μ et Σ | μ : moyenne exponentielle des rendements (`span=60`), annualisée. Σ : 252 derniers jours, Ledoit-Wolf. Actifs avec au moins 60 rendements dans la fenêtre |
+| Classes de risque 1 à 7 | Volatilité annualisée découpée selon l'échelle SRRI (0,5 / 2 / 5 / 10 / 15 / 25 %). Moins de 60 rendements : classe médiane de la sous-catégorie (28 actifs) |
+| ETF PEA (`src/data/pea/`) | 19 ETF lus sur justETF (éligibilité PEA et cotation à Paris vérifiées), pays tels que publiés, classe de risque calculée sur la volatilité justETF |
+
 ## Propriétaires des dossiers
 
 | Qui | Dossiers |
