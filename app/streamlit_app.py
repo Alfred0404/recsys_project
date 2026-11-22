@@ -10,12 +10,19 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.client import catalog, log_interaction, recommend, review_profile  # noqa: E402
+from app.pea_view import concentration, exposure_after  # noqa: E402
+from src.data.pea_etfs import load_pea  # noqa: E402
 from src.llm.profile import QUESTIONNAIRE  # noqa: E402
 
 
 st.set_page_config(page_title="Recommandation d’actifs", layout="wide")
 st.title("Recommandation d’actifs")
 st.caption("Explorez comment des actifs issus de FAR-Trans compléteraient votre portefeuille. Démonstration pédagogique.")
+st.warning(
+    "Outil éducatif de diversification, pas un conseil en investissement. "
+    "Il ne recommande ni achat ni vente et ne promet aucun rendement. "
+    "Les données sont historiques (FAR-Trans, 2018-2022)."
+)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -129,3 +136,33 @@ with output:
                 st.caption(review_status.get(review["status"], "Le profil provient du questionnaire."))
     elif not st.session_state.get("recommendation_error"):
         st.info("Renseignez votre profil pour obtenir des suggestions. Le portefeuille peut être vide.")
+
+
+st.divider()
+st.subheader("Exposition par pays : ETF éligibles au PEA")
+st.caption("Choisissez les ETF PEA que vous détenez et un ETF à ajouter. "
+           "Le graphique compare la répartition par pays avant et après. Ce volet est indépendant du modèle.")
+pea_etfs, pea_countries = load_pea()
+pea_names = dict(zip(pea_etfs["isin"], pea_etfs["name"]))
+pea_left, pea_right = st.columns([1, 2], gap="large")
+with pea_left:
+    pea_held = st.multiselect("ETF PEA détenus", list(pea_names), format_func=lambda isin: pea_names[isin])
+    pea_amounts = {
+        isin: st.number_input(f"Montant pour {pea_names[isin]} (€)", min_value=0.01, value=1000.0,
+                              key=f"pea_amount_{isin}")
+        for isin in pea_held
+    }
+    pea_candidate = st.selectbox("ETF à ajouter", list(pea_names), format_func=lambda isin: pea_names[isin])
+    pea_share = st.slider("Part du portefeuille consacrée à l’ajout", 5, 50, 10, step=5, format="%d %%") / 100
+with pea_right:
+    pea_table = exposure_after(pea_amounts, pea_candidate, pea_countries, pea_share)
+    st.bar_chart(pea_table.head(10), horizontal=True)
+    if pea_amounts:
+        before_c = concentration(pea_table["Avant"])
+        after_c = concentration(pea_table["Après"])
+        st.caption(
+            f"Premier pays : {before_c['top_country']} {before_c['top_share']:.0%} → "
+            f"{after_c['top_country']} {after_c['top_share']:.0%}. "
+            f"Concentration (HHI) : {before_c['hhi']:.2f} → {after_c['hhi']:.2f}."
+        )
+    st.caption("Répartition publiée par justETF, « Other » inclus. Aucune recommandation d’achat.")
