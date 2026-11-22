@@ -14,6 +14,7 @@ import pandas as pd
 from src.data.asset_returns import SRRI_BANDS
 
 DIR = Path(__file__).parent / "pea"
+UNKNOWN_COUNTRY = "Non renseigné"
 
 
 def load_pea() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -26,8 +27,18 @@ def load_pea() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def exposure(holdings: dict[str, float], countries: pd.DataFrame) -> pd.Series:
-    """Country exposure in % of a portfolio of PEA ETFs, from amounts per ISIN."""
-    w = pd.Series(holdings, dtype=float)
-    w = w / w.sum()
-    c = countries[countries["isin"].isin(w.index)]
-    return (c["weight"] * c["isin"].map(w)).groupby(c["country"]).sum().sort_values(ascending=False)
+    """Country exposure in %, with a bucket for holdings without published weights."""
+    amounts = pd.Series({isin: amount for isin, amount in holdings.items() if amount > 0}, dtype=float)
+    if amounts.empty:
+        return amounts
+
+    weights = amounts / amounts.sum()
+    covered = countries[countries["isin"].isin(weights.index)]
+    result = pd.Series(dtype=float)
+    if not covered.empty:
+        contributions = covered["weight"] * covered["isin"].map(weights)
+        result = contributions.groupby(covered["country"]).sum()
+    unknown = weights.loc[~weights.index.isin(covered["isin"])].sum() * 100
+    if unknown > 0:
+        result.loc[UNKNOWN_COUNTRY] = unknown
+    return result.sort_values(ascending=False)

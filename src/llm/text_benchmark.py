@@ -1,4 +1,4 @@
-"""Compare profile stages on synthetic statements authored and labelled by the team."""
+"""Compare profile stages on labelled synthetic drafts or team contributions."""
 
 import argparse
 from collections import Counter
@@ -13,7 +13,9 @@ from src.llm.reflection import configured_generator, review_profile
 
 
 THOMAS_FIXTURE = Path(__file__).with_name("fixtures") / "thomas_profiles.json"
+DRAFT_FIXTURE = THOMAS_FIXTURE.with_name("draft_profiles.json")
 TEAM = {"ethan", "alfred", "nicolas", "thomas"}
+FIXTURE_AUTHORS = TEAM | {"draft"}
 
 
 def load_cases(paths: list[Path], require_team: bool = False) -> list[dict]:
@@ -27,7 +29,7 @@ def load_cases(paths: list[Path], require_team: bool = False) -> list[dict]:
             if not isinstance(row, dict) or set(row) != {"id", "author", "text", "risk_level"}:
                 raise ValueError(f"{path}: each entry needs id, author, text and risk_level.")
             author, case_id, statement, level = (row[key] for key in ("author", "id", "text", "risk_level"))
-            if (not isinstance(author, str) or author not in TEAM
+            if (not isinstance(author, str) or author not in FIXTURE_AUTHORS
                     or not isinstance(case_id, str) or not case_id.startswith(f"{author}-")
                     or not isinstance(statement, str) or not 1 <= len(statement.strip()) <= 500
                     or type(level) is not int or level not in RISK_LEVELS):
@@ -79,14 +81,18 @@ def compare(cases: list[dict], generate) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("files", nargs="*", type=Path, default=[THOMAS_FIXTURE])
-    parser.add_argument("--require-team", action="store_true")
+    parser.add_argument("files", nargs="*", type=Path, help="JSON contributions; defaults to the ten Thomas fixtures")
+    parser.add_argument("--require-team", action="store_true", help="Require ten cases per team member, excluding drafts")
+    parser.add_argument("--draft-suite", action="store_true", help="Use the ten Thomas fixtures plus thirty synthetic drafts")
     args = parser.parse_args()
+    if args.draft_suite and (args.files or args.require_team):
+        parser.error("--draft-suite is separate from custom contributions and team validation.")
+    files = [THOMAS_FIXTURE, DRAFT_FIXTURE] if args.draft_suite else args.files or [THOMAS_FIXTURE]
     generate = configured_generator()
     if generate is None:
         parser.error("Set RECSYS_OLLAMA_MODEL or RECSYS_OPENAI_COMPAT_URL first.")
     try:
-        cases = load_cases(args.files, args.require_team)
+        cases = load_cases(files, args.require_team)
     except ValueError as exc:
         parser.error(str(exc))
     print(json.dumps(compare(cases, generate), indent=2))

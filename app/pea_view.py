@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from src.data.pea_etfs import exposure
+from src.data.pea_etfs import UNKNOWN_COUNTRY, exposure
 
 
 def exposure_after(holdings: dict[str, float], candidate: str, countries: pd.DataFrame,
@@ -24,7 +24,18 @@ def exposure_after(holdings: dict[str, float], candidate: str, countries: pd.Dat
     return table.sort_values("Après", ascending=False)
 
 
-def concentration(exposures: pd.Series) -> dict[str, float | str]:
-    """Largest country and HHI (0-1) of a country exposure in %."""
-    shares = exposures[exposures > 0] / exposures.sum()
-    return {"top_country": shares.idxmax(), "top_share": float(shares.max()), "hhi": float((shares**2).sum())}
+def concentration(exposures: pd.Series) -> dict[str, float | str | None]:
+    """Largest named country and published-bucket HHI, when the allocation is covered."""
+    unknown_share = float(exposures.get(UNKNOWN_COUNTRY, 0)) / 100
+    known = exposures[exposures > 0].drop(labels=UNKNOWN_COUNTRY, errors="ignore")
+    result = {"top_country": None, "top_share": None, "hhi": None, "unknown_share": unknown_share}
+    if known.empty or unknown_share > 0:
+        return result
+
+    shares = known / known.sum()
+    named_countries = shares.drop(labels="Other", errors="ignore")
+    result["hhi"] = float((shares**2).sum())
+    if not named_countries.empty:
+        result["top_country"] = named_countries.idxmax()
+        result["top_share"] = float(named_countries.max())
+    return result

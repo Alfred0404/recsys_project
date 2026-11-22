@@ -1,8 +1,10 @@
+from collections import Counter
+
 import pytest
 
 from src.llm.profile import QUESTIONNAIRE
 from src.llm.reflection import infer_profile, review_profile
-from src.llm.text_benchmark import THOMAS_FIXTURE, load_cases
+from src.llm.text_benchmark import DRAFT_FIXTURE, THOMAS_FIXTURE, load_cases
 
 
 def test_successful_reflection_uses_actual_text_and_records_actor_separately():
@@ -46,3 +48,11 @@ def test_team_benchmark_rejects_incomplete_and_duplicate_contributions():
         load_cases([THOMAS_FIXTURE], require_team=True)
     with pytest.raises(ValueError, match="duplicate fixture"):
         load_cases([THOMAS_FIXTURE, THOMAS_FIXTURE])
+
+
+def test_draft_suite_is_balanced_and_cannot_pass_as_team_contributions():
+    cases = load_cases([THOMAS_FIXTURE, DRAFT_FIXTURE])
+    assert Counter(row["risk_level"] for row in cases) == dict.fromkeys(range(1, 5), 10)
+    assert Counter(row["author"] for row in cases) == {"thomas": 10, "draft": 30}
+    with pytest.raises(ValueError, match="10 cases from each"):
+        load_cases([THOMAS_FIXTURE, DRAFT_FIXTURE], require_team=True)
