@@ -112,6 +112,10 @@ with output:
         if result["profile_review_available"]:
             if st.button("Vérifier le profil avec le modèle local"):
                 try:
+                    log_interaction(st.session_state.session_uuid, "profile_review_requested")
+                except requests.RequestException:
+                    pass  # the review itself must not depend on the demo log
+                try:
                     with st.spinner("Vérification du profil…"):
                         st.session_state.profile_review = review_profile(st.session_state.recommendation_payload)
                 except requests.RequestException:
