@@ -34,3 +34,38 @@ def test_export_writes_every_event_and_counts_them(tmp_path):
 def test_export_without_log_fails_clearly(tmp_path):
     with pytest.raises(FileNotFoundError, match="start the API"):
         export_csv(tmp_path / "missing.sqlite3", tmp_path / "out.csv")
+
+
+def test_export_cannot_replace_the_log_or_an_alias(tmp_path):
+    db = tmp_path / "log.sqlite3"
+    initialize(db)
+    insert_event(db, "s1", "portfolio_entered", None)
+    original = db.read_bytes()
+    alias = tmp_path / "alias.csv"
+    alias.hardlink_to(db)
+    journal = tmp_path / "log.sqlite3-wal"
+
+    for output in (db, alias, journal):
+        with pytest.raises(ValueError, match="different from the event log"):
+            export_csv(db, output)
+
+    assert db.read_bytes() == alias.read_bytes() == original
+    assert not journal.exists()
+
+
+def test_failed_export_keeps_the_previous_csv(tmp_path, monkeypatch):
+    db = tmp_path / "log.sqlite3"
+    out = tmp_path / "log.csv"
+    initialize(db)
+    out.write_text("previous CSV", encoding="utf-8")
+
+    def fail_replace(self, destination):
+        raise OSError("CSV is locked")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "replace", fail_replace)
+        with pytest.raises(OSError, match="CSV is locked"):
+            export_csv(db, out)
+
+    assert out.read_text(encoding="utf-8") == "previous CSV"
+    assert set(tmp_path.iterdir()) == {db, out}

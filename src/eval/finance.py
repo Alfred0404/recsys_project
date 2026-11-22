@@ -93,7 +93,9 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25,
     examples = {}
     variance_pairs = []
     fully_covered_users = 0
-    risk_counts = {name: Counter() for name in ("nlgcl", "risk_only", "mpt_risk", "risk_tolerant")}
+    risk_counts = {name: Counter() for name in ("nlgcl", "risk_only", "mpt_risk")}
+    if tolerance:
+        risk_counts["risk_tolerant"] = Counter()
     level_source = Counter()
     for user, scores in scored.items():
         label = str(labels.get(user, "")).casefold()
@@ -114,15 +116,14 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25,
             reranked = mpt_rerank(allowed, relevance, holdings, mu, sigma, gamma, lam, allocation=ALLOCATION)
         filtered_rankings[user] = allowed
         reranked_rankings[user] = reranked
+        variants = [("nlgcl", list(relevance)), ("risk_only", allowed), ("mpt_risk", reranked)]
         if tolerance:
             tolerant_rankings[user] = risk_rerank(
                 relevance, relevance, classes, ceiling, tolerance=tolerance, penalty=penalty,
             )
+            variants.append(("risk_tolerant", tolerant_rankings[user]))
 
-        for name, items in (
-            ("nlgcl", list(relevance)), ("risk_only", allowed), ("mpt_risk", reranked),
-            ("risk_tolerant", tolerant_rankings.get(user, [])),
-        ):
+        for name, items in variants:
             risk_counts[name].update(_risk_counts(items[:10], classes, ceiling))
 
         impact = pd.DataFrame()
@@ -161,7 +162,7 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25,
         "allocation": ALLOCATION,
         "risk_level_source": dict(level_source),
         "fully_covered_portfolio_users": int(fully_covered_users),
-        "top10_risk": {name: _summarize_risk(counts) for name, counts in risk_counts.items() if counts["total"]},
+        "top10_risk": {name: _summarize_risk(counts) for name, counts in risk_counts.items()},
         "paired_top1_variance": {
             "users": len(variance),
             "risk_only_mean_change": float(variance[:, 0].mean()) if len(variance) else None,

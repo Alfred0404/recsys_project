@@ -38,6 +38,16 @@ def review_profile(payload: dict) -> dict:
     return response.json()
 
 
+def explain_item(recommendation_id: str, isin: str, session_id: str) -> dict:
+    response = requests.post(
+        f"{API_URL}/explain",
+        json={"recommendation_id": recommendation_id, "isin": isin, "session_id": session_id},
+        timeout=25,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def log_interaction(session_id: str, event: str, isin: str | None = None) -> int:
     response = requests.post(
         f"{API_URL}/log_interaction",

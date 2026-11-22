@@ -1,6 +1,6 @@
 import pytest
 
-from src.data.pea_etfs import exposure, load_pea
+from src.data.pea_etfs import UNKNOWN_COUNTRY, exposure, load_pea
 
 
 def isin_is_valid(isin: str) -> bool:
@@ -29,3 +29,14 @@ def test_exposure_weights_by_amount():
     e = exposure({"FR0011871128": 1000, "FR0007052782": 1000}, countries)
     assert e["United States"] == pytest.approx(96.97 / 2)
     assert e["France"] == pytest.approx(88.87 / 2)
+
+
+def test_exposure_reports_unpublished_country_weights():
+    _, countries = load_pea()
+    paej, sp500 = "FR0011869312", "FR0011871128"
+    assert exposure({paej: 1000}, countries).to_dict() == {UNKNOWN_COUNTRY: 100.0}
+
+    mixed = exposure({paej: 1000, sp500: 1000}, countries)
+    assert mixed[UNKNOWN_COUNTRY] == pytest.approx(50.0)
+    assert mixed["United States"] == pytest.approx(96.97 / 2)
+    assert mixed.sum() == pytest.approx(100.0)

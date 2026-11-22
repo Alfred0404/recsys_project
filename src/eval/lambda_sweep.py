@@ -68,9 +68,29 @@ def sweep(scored, tx, cutoff, processed, test, warm_users, lambdas=DEFAULT_LAMBD
     return rows
 
 
-def main():
+def score_saved_experiment(tx: pd.DataFrame, model_path: Path):
+    """Rebuild the saved split and score only if both embedding ID mappings match."""
     from src.train.run import Experiment
 
+    with np.load(model_path, allow_pickle=False) as saved:
+        experiment = Experiment.from_transactions(
+            tx, str(saved["train_cutoff"]), str(saved["test_cutoff"]),
+        )
+        for field, rebuilt in (("user_ids", experiment.user_index), ("item_ids", experiment.item_index)):
+            if field not in saved.files or not np.array_equal(saved[field], list(rebuilt)):
+                raise ValueError(
+                    f"Model {field} do not match the rebuilt training split. "
+                    "Use the processed transactions and model artifact from the same run."
+                )
+        # Same candidates as the training run: full catalogue, purchase history masked.
+        scored = experiment.rank(
+            experiment.test, (saved["user_embeddings"], saved["item_embeddings"]),
+            experiment.test_history, k=len(experiment.item_index),
+        )
+    return experiment, scored
+
+
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--processed-dir", type=Path, default=Path("dataset/processed"))
     parser.add_argument("--experiment-dir", type=Path, default=Path("dataset/experiment"))
@@ -80,15 +100,10 @@ def main():
         parser.error("Every lambda must be between zero and one.")
 
     tx = pd.read_parquet(args.processed_dir / "transactions.parquet")
-    saved = np.load(args.experiment_dir / "model.npz", allow_pickle=False)
-    experiment = Experiment.from_transactions(
-        tx, str(saved["train_cutoff"]), str(saved["test_cutoff"]),
-    )
-    # Same candidates as the training run: full catalogue, purchase history masked.
-    scored = experiment.rank(
-        experiment.test, (saved["user_embeddings"], saved["item_embeddings"]),
-        experiment.test_history, k=len(experiment.item_index),
-    )
+    try:
+        experiment, scored = score_saved_experiment(tx, args.experiment_dir / "model.npz")
+    except ValueError as exc:
+        parser.error(str(exc))
     rows = sweep(scored, tx, experiment.t2, args.processed_dir, experiment.test,
                  set(experiment.user_index), args.lambdas)
     table = pd.DataFrame(rows)
