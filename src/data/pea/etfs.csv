@@ -1,0 +1,20 @@
+isin,name,ticker,ter,volatility,volatility_period,as_of,source_url
+FR0007052782,Amundi CAC 40 UCITS ETF Dist,CAC,0.25,14.23,3y,2026-09-24,https://www.justetf.com/fr/etf-profile.html?isin=FR0007052782
+FR0007054358,Amundi EURO STOXX 50 II UCITS ETF Acc,MSE,0.20,15.44,3y,2026-09-24,https://www.justetf.com/fr/etf-profile.html?isin=FR0007054358
+FR0012739431,BNP Paribas Easy EURO STOXX 50 UCITS ETF,ETDD,0.10,15.17,3y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR0012739431
+FR001400XS96,CM-AM Euro Stoxx 50 UCITS ETF,CM5E,0.09,15.51,1y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR001400XS96
+FR0011550193,BNP Paribas Easy STOXX Europe 600 UCITS ETF,ETZ,0.19,12.28,3y,2026-09-29,https://www.justetf.com/fr/etf-profile.html?isin=FR0011550193
+FR0013412038,Amundi PEA MSCI Europe UCITS ETF Acc,PCEU,0.15,12.06,3y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR0013412038
+LU3215536486,BNP Paribas Easy MSCI EMU UCITS ETF Acc,EUZON,0.06,,,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=LU3215536486
+LU3086268227,BNP Paribas Easy ESG Enhanced EMU UCITS ETF Acc,AEMUS,0.10,15.45,1y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=LU3086268227
+FR0010655712,Amundi ETF DAX UCITS ETF,CG1,0.10,15.51,3y,2026-09-24,https://www.justetf.com/fr/etf-profile.html?isin=FR0010655712
+FR001400U5Q4,Amundi PEA Monde (MSCI World) UCITS ETF Acc,DCAM,0.20,11.06,1y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR001400U5Q4
+IE0002XZSHO1,iShares MSCI World Swap PEA UCITS ETF EUR (Acc),WPEA,0.20,11.06,1y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=IE0002XZSHO1
+FR0014017NX3,Amundi PEA Global (MSCI ACWI) UCITS ETF Acc,GPEA,0.30,,,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR0014017NX3
+FR0011871128,Amundi PEA S&P 500 UCITS ETF Acc,PSP5,0.12,15.60,3y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR0011871128
+IE000DQLYVB9,iShares S&P 500 Swap PEA UCITS ETF EUR (Acc),SPEA,0.10,13.12,1y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=IE000DQLYVB9
+FR0011871110,Amundi PEA Nasdaq-100 UCITS ETF Acc,PUST,0.30,21.11,3y,2026-09-28,https://www.justetf.com/fr/etf-profile.html?isin=FR0011871110
+FR0013411980,Amundi PEA Japon (TOPIX) UCITS ETF EUR Acc,PTPXE,0.20,20.88,3y,2026-09-24,https://www.justetf.com/fr/etf-profile.html?isin=FR0013411980
+FR0013411998,Amundi PEA Japan (TOPIX) UCITS ETF EUR Hedged,PTPXH,0.48,21.27,3y,2026-09-24,https://www.justetf.com/fr/etf-profile.html?isin=FR0013411998
+FR0011869320,Amundi PEA Inde (MSCI India) UCITS ETF Acc,PINR,0.85,16.11,3y,2026-09-30,https://www.justetf.com/fr/etf-profile.html?isin=FR0011869320
+FR0011869312,Amundi PEA Asie Pacifique (MSCI AC Asia Pacific Ex Japan) UCITS ETF Acc,PAEJ,0.60,18.13,3y,,https://www.justetf.com/fr/etf-profile.html?isin=FR0011869312
