@@ -43,7 +43,8 @@ class RecommendationRequest(BaseModel):
 
 class Interaction(BaseModel):
     session_id: UUID
-    event: Literal["portfolio_entered", "recommendation_viewed", "feedback_positive", "feedback_negative"]
+    event: Literal["portfolio_entered", "recommendation_viewed", "feedback_positive", "feedback_negative",
+                   "profile_review_requested"]
     isin: Isin | None = None
 
 
