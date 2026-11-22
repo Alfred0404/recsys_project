@@ -42,6 +42,10 @@ def build_profile(holdings: dict[str, float], answers: dict[str, int]) -> Profil
         total = sum(answers[key] for key in QUESTIONNAIRE)
         level = 1 + sum(total >= threshold for threshold in (2, 4, 6))
         source = "questionnaire"
+    return profile_for_level(holdings, level, source)
+
+
+def profile_for_level(holdings: dict[str, float], level: int, source: str) -> Profile:
     ceiling, gamma = RISK_LEVELS[level]
     return Profile(level, ceiling, gamma, portfolio_gaps(holdings), source)
 

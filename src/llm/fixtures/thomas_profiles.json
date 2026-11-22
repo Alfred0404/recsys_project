@@ -1,0 +1,62 @@
+[
+  {
+    "id": "thomas-01",
+    "author": "thomas",
+    "text": "Cet argent doit servir d'apport pour un logement l'été prochain. Même une petite baisse au moment de le retirer me poserait problème.",
+    "risk_level": 1
+  },
+  {
+    "id": "thomas-02",
+    "author": "thomas",
+    "text": "J'envisage des placements pour les cinq prochaines années. Je préfère un revenu régulier et je peux accepter de petites variations.",
+    "risk_level": 2
+  },
+  {
+    "id": "thomas-03",
+    "author": "thomas",
+    "text": "Mon horizon est de huit ans. Je veux de la croissance mais je garderais une partie stable. Une baisse temporaire de 12 % ne me ferait pas vendre.",
+    "risk_level": 3
+  },
+  {
+    "id": "thomas-04",
+    "author": "thomas",
+    "text": "Cette épargne est pour dans quinze ans au moins. Je cherche surtout la croissance à long terme, même avec une baisse de 35 % en cours de route.",
+    "risk_level": 4
+  },
+  {
+    "id": "thomas-05",
+    "author": "thomas",
+    "text": "J'aimerais un bon rendement, mais je dois préserver le capital. Je pourrais avoir besoin de la somme dans quelques mois.",
+    "risk_level": 1
+  },
+  {
+    "id": "thomas-06",
+    "author": "thomas",
+    "text": "I will leave the money invested for at least ten years. I accept sharp drawdowns and would keep investing after a 30% loss to pursue growth.",
+    "risk_level": 4
+  },
+  {
+    "id": "thomas-07",
+    "author": "thomas",
+    "text": "Je n'ai pas besoin de la somme avant quelques années. Je supporte quelques fluctuations, mais une perte notable m'empêcherait de dormir. La stabilité prime.",
+    "risk_level": 2
+  },
+  {
+    "id": "thomas-08",
+    "author": "thomas",
+    "text": "Je veux un portefeuille équilibré sur sept ans. Je peux assumer des pertes modérées, mais je réduirais mes positions si le risque devenait trop élevé.",
+    "risk_level": 3
+  },
+  {
+    "id": "thomas-09",
+    "author": "thomas",
+    "text": "Je débute et j'aimerais comprendre les options. Je ne connais pas encore mon horizon ni les pertes que je pourrais supporter.",
+    "risk_level": 1
+  },
+  {
+    "id": "thomas-10",
+    "author": "thomas",
+    "text": "Pas de retrait prévu avant vingt ans. Le rendement à long terme est ma priorité. Même après de fortes baisses, je conserverais les placements.",
+    "risk_level": 4
+  }
+]
