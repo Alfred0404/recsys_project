@@ -42,13 +42,15 @@ def diversity(rankings: dict, categories: dict[str, str], k: int = 10) -> dict:
     }
 
 
-def sweep(scored, tx, cutoff, processed, test, warm_users, lambdas=DEFAULT_LAMBDAS) -> list[dict]:
+def sweep(scored, tx, cutoff, processed, test, warm_users, lambdas=DEFAULT_LAMBDAS, mu_shrinkage=0.0) -> list[dict]:
     rows = []
     with tempfile.TemporaryDirectory() as scratch:
         scratch = Path(scratch)
         categories = None
         for lam in lambdas:
-            summary, rankings = evaluate_reranking(scored, tx, cutoff, processed, scratch, warm_users, lam)
+            summary, rankings = evaluate_reranking(
+                scored, tx, cutoff, processed, scratch, warm_users, lam, mu_shrinkage=mu_shrinkage,
+            )
             if categories is None:
                 assets = pd.read_parquet(scratch / "finance" / "assets.parquet")
                 column = "assetSubCategory" if "assetSubCategory" in assets else "assetCategory"
@@ -95,17 +97,26 @@ def main():
     parser.add_argument("--processed-dir", type=Path, default=Path("dataset/processed"))
     parser.add_argument("--experiment-dir", type=Path, default=Path("dataset/experiment"))
     parser.add_argument("--lambdas", type=float, nargs="+", default=list(DEFAULT_LAMBDAS))
+    parser.add_argument("--mu-shrinkage", type=float, default=None,
+                        help="Expected-return shrinkage (default: the value stored with the model)")
     args = parser.parse_args()
     if any(not 0 <= lam <= 1 for lam in args.lambdas):
         parser.error("Every lambda must be between zero and one.")
+    if args.mu_shrinkage is not None and not 0 <= args.mu_shrinkage <= 1:
+        parser.error("Expected-return shrinkage must be between zero and one.")
 
     tx = pd.read_parquet(args.processed_dir / "transactions.parquet")
     try:
         experiment, scored = score_saved_experiment(tx, args.experiment_dir / "model.npz")
     except ValueError as exc:
         parser.error(str(exc))
+    with np.load(args.experiment_dir / "model.npz", allow_pickle=False) as saved:
+        shrinkage = float(saved["mu_shrinkage"].item()) if "mu_shrinkage" in saved.files else 0.0
+    if args.mu_shrinkage is not None:
+        shrinkage = args.mu_shrinkage
     rows = sweep(scored, tx, experiment.t2, args.processed_dir, experiment.test,
-                 set(experiment.user_index), args.lambdas)
+                 set(experiment.user_index), args.lambdas, shrinkage)
+    print(f"Expected-return shrinkage: {shrinkage}")
     table = pd.DataFrame(rows)
     out = args.experiment_dir / "lambda_sweep"
     out.mkdir(parents=True, exist_ok=True)
