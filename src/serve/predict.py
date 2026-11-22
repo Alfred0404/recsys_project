@@ -52,7 +52,8 @@ class Recommender:
             scores[order] = 1 - np.arange(len(order)) / max(1, len(order))
             ranking_source = "popularity"
 
-        candidates = [self.item_ids[i] for i in order if self.item_ids[i] not in holdings][:100]
+        # The whole catalogue stays eligible so a low ceiling still fills k suggestions.
+        candidates = [self.item_ids[i] for i in order if self.item_ids[i] not in holdings]
         candidates = risk_filter(candidates, self.risk_classes, profile.ceiling)
         relevance = {isin: float(scores[self.item_index[isin]]) for isin in candidates}
         # The covariance of a portfolio with unpriced positions is only partially observable.

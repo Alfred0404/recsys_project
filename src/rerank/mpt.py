@@ -16,12 +16,52 @@ def risk_filter(
     """Keep classified assets at or below the ceiling, in input ranking order."""
     if not 1 <= ceiling <= 7:
         raise ValueError("Risk ceiling must be in [1, 7]")
-    if isinstance(asset_risk, pd.DataFrame):
-        asset_risk = asset_risk.set_index("ISIN")["risk_class"]
     candidates = list(isins)
-    classes = pd.to_numeric(pd.Series(asset_risk).reindex(candidates), errors="coerce")
+    classes = _risk_classes(candidates, asset_risk)
     allowed = classes.between(1, ceiling).fillna(False)
     return [isin for isin, keep in zip(candidates, allowed) if keep]
+
+
+def _risk_classes(candidates: list[str], asset_risk) -> pd.Series:
+    if isinstance(asset_risk, pd.DataFrame):
+        asset_risk = asset_risk.set_index("ISIN")["risk_class"]
+    return pd.to_numeric(pd.Series(asset_risk).reindex(candidates), errors="coerce")
+
+
+def risk_rerank(
+    isins: Iterable[str],
+    relevance: Mapping[str, float],
+    asset_risk: Mapping[str, float] | pd.Series | pd.DataFrame,
+    ceiling: int,
+    *,
+    tolerance: int = 0,
+    penalty: float = 0.5,
+) -> list[str]:
+    """Rank by normalized relevance minus a penalty per class above the ceiling.
+
+    Classes up to `ceiling + tolerance` are kept and unknown classes are dropped.
+    Each class above the ceiling costs `penalty` on a [0, 1] relevance scale, so
+    a suitable asset keeps its place unless the riskier one is clearly more
+    relevant. With `tolerance=0` this is `risk_filter` ordered by relevance.
+    Ties follow the incoming ranking.
+    """
+    if not 1 <= ceiling <= 7:
+        raise ValueError("Risk ceiling must be in [1, 7]")
+    if tolerance < 0 or not np.isfinite(penalty) or penalty < 0:
+        raise ValueError("Tolerance and penalty must be non-negative")
+    candidates = list(dict.fromkeys(isins))
+    classes = _risk_classes(candidates, asset_risk)
+    allowed = classes.between(1, min(ceiling + tolerance, 7)).fillna(False).to_numpy()
+    kept = [isin for isin, keep in zip(candidates, allowed) if keep]
+    if not kept:
+        return []
+
+    relevance_scores = np.array([relevance[isin] for isin in kept], dtype=float)
+    if not np.isfinite(relevance_scores).all():
+        raise ValueError("Relevance scores must all be finite")
+    excess = np.maximum(classes.reindex(kept).to_numpy(dtype=float) - ceiling, 0)
+    scores = _minmax(relevance_scores) - penalty * excess
+    return [kept[i] for i in np.argsort(-scores, kind="stable")]
 
 
 def portfolio_impact(
