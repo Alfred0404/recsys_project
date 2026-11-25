@@ -136,6 +136,18 @@ a { color: inherit; text-decoration: none; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border-radius: 8px; font-size: 14px; }
 .chip button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 6px; }
 .chip button:hover { color: var(--paper); background: rgba(255, 255, 255, .08); }
+.chip .amount { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.chip .amount input { width: 9ch; font: 14px var(--sans); color: var(--paper); border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, .04); border-radius: 6px; padding: 4px 6px; }
+.profile-mode, .objective { width: 100%; margin: 14px 0 0; }
+.profile-mode { border: 1px solid var(--line-strong); border-radius: 10px; padding: 7px 12px 10px; min-width: 0; }
+.profile-mode legend, .objective { color: var(--muted); font-size: 14px; }
+.profile-mode label { display: inline-flex; align-items: center; gap: 4px; margin-right: 18px; }
+.profile-mode input { accent-color: var(--copper); }
+.objective { display: block; }
+.objective textarea { display: block; width: 100%; min-height: 96px; margin-top: 6px; resize: vertical;
+  padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--paper);
+  background: rgba(255, 255, 255, .04); font: 15px var(--sans); }
 
 .toggle { width: 44px; padding: 10px 0; }
 .toggle svg { width: 16px; height: 16px; color: var(--paper); transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
@@ -179,6 +191,8 @@ select option { background: #111113; }
 .footnote { color: var(--muted); font-size: 13px; margin-top: 18px; }
 .feedback { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 22px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
 .feedback .btn { padding: 7px 14px; font-size: 14px; }
+.review-actions { margin: 14px 0; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.review-actions .footnote { margin: 0; }
 
 /* ---------- Asset page ---------- */
 .asset { width: min(1040px, 100% - 48px); margin: 0 auto; padding: 110px 0 100px; }
