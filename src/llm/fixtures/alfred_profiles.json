@@ -1,0 +1,62 @@
+[
+  {
+    "id": "alfred-01",
+    "author": "alfred",
+    "text": "Je suis à la retraite et ce placement complète ma pension chaque mois. Je ne peux pas me permettre de voir le capital baisser.",
+    "risk_level": 1
+  },
+  {
+    "id": "alfred-02",
+    "author": "alfred",
+    "text": "Je veux tenter des actions très volatiles pour gagner vite, mais j'ai besoin de cet argent pour payer mes frais de scolarité en septembre.",
+    "risk_level": 1
+  },
+  {
+    "id": "alfred-03",
+    "author": "alfred",
+    "text": "C'est mon épargne de précaution. Je veux pouvoir la récupérer à tout moment, sans perte, en cas d'imprévu.",
+    "risk_level": 1
+  },
+  {
+    "id": "alfred-04",
+    "author": "alfred",
+    "text": "Je prépare un projet dans quatre ou cinq ans. Une baisse de 5 % ne me gêne pas, au-delà de 10 % je commencerais à m'inquiéter.",
+    "risk_level": 2
+  },
+  {
+    "id": "alfred-05",
+    "author": "alfred",
+    "text": "I want a bit more than a savings account over the next few years, mostly bonds with a small share of shares. Large swings would worry me.",
+    "risk_level": 2
+  },
+  {
+    "id": "alfred-06",
+    "author": "alfred",
+    "text": "J'investis pour les études de mes enfants dans dix ans. Je veux de la croissance, mais je garderais environ la moitié sur des supports plus stables.",
+    "risk_level": 3
+  },
+  {
+    "id": "alfred-07",
+    "author": "alfred",
+    "text": "Horizon de six à huit ans. J'ai déjà vécu une baisse de 15 % sans rien vendre, mais une chute de 40 % me ferait réduire mes positions.",
+    "risk_level": 3
+  },
+  {
+    "id": "alfred-08",
+    "author": "alfred",
+    "text": "J'ai 25 ans et je place une partie de mon salaire chaque mois pour ma retraite. Les krachs sont des occasions d'acheter moins cher.",
+    "risk_level": 4
+  },
+  {
+    "id": "alfred-09",
+    "author": "alfred",
+    "text": "Cet héritage ne me servira pas avant au moins vingt ans. Je vise le rendement maximal et j'accepte que le portefeuille perde la moitié de sa valeur en cours de route.",
+    "risk_level": 4
+  },
+  {
+    "id": "alfred-10",
+    "author": "alfred",
+    "text": "Mes revenus d'entrepreneur couvrent largement mes besoins. Cet argent peut rester investi en actions sur le long terme, même dans un marché très agité.",
+    "risk_level": 4
+  }
+]
