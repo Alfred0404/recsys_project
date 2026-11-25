@@ -2,6 +2,8 @@
 
 Projet d'équipe : recommandation d'actifs par GNN (NLGCL), re-ranking selon la théorie moderne du portefeuille (MPT) et filtre de risque, avec profil et explications par LLM. Les documents de cadrage sont dans [docs/](docs/).
 
+**Équipe** : Ethan Petain (Project Lead), Alfred De Vulpian (Data Engineer), Nicolas Cottez-Abrate (Lead ML Engineer), Thomas Confolent (ML Engineer Ops).
+
 ## Reproduire l'expérience et lancer la démo
 
 Depuis le dossier du dépôt, avec Python 3.11 ou plus récent :
@@ -60,8 +62,29 @@ python -m src.eval.profile_benchmark
 ```
 
 Ce test compare la première réponse du modèle et le profil vérifié sur neuf cas
-synthétiques. Le [rapport Week 3](docs/Finance_Recommendation_Week3_Status_Report.pdf)
+synthétiques. Le [dernier rapport](docs/Finance_Recommendation_Week3_Status_Report_v3.pdf)
 contient les mesures de l'expérience et de la démo.
+
+## Réentraîner le modèle et reproduire les résultats
+
+`python -m src.train.run` réentraîne NLGCL et l'ablation LightGCN (environ 5 min sur CPU), puis écrit le modèle servi par l'API. Les commandes suivantes relisent `dataset/experiment/model.npz` :
+
+| Commande | Résultat |
+|---|---|
+| `python -m src.train.run --risk-tolerance 1` | Run complet, avec en plus l'ablation du filtre tolérant (une classe au-dessus du plafond, pénalisée) |
+| `python -m src.eval.tune` | Choisit λ et le rétrécissement de μ sur la **validation** (`tuning/validation_grid.csv`, `tuning/selected.json`). Les valeurs retenues sont les défauts de `src.train.run` |
+| `python -m src.eval.lambda_sweep` | Courbe pertinence / diversification sur le test pour chaque λ (`lambda_sweep/`) |
+| `python -m src.rerank.calibrate` | γ implicite des portefeuilles réels par niveau de risque (`gamma_calibration.json`) |
+| `python -m src.llm.evaluate_profiles` | Profil contre les vrais `riskLevel` (modèle local requis) |
+| `python -m src.llm.text_benchmark --draft-suite` | Chemin texte libre sur 40 profils étiquetés (modèle local requis) |
+| `python -m src.llm.explanation_benchmark` | Fidélité des explications, LLM contre gabarit (modèle local requis) |
+
+**Choix documentés**
+
+- **μ rétréci vers la moyenne (δ = 1)**. Le rendement attendu sur 60 jours est trop bruité : avec μ brut, augmenter λ dégradait à la fois le NDCG, la diversité et la variance. Avec δ = 1, le score MPT ne classe plus que par la variance ajoutée au portefeuille. λ = 0,25 et δ = 1 sont choisis sur la validation (NDCG au moins égal à 95 % du filtre seul, puis plus forte baisse de variance).
+- **γ reste une grille fixe** (4 / 3 / 2 / 1). Le γ implicite des portefeuilles réels est négatif en médiane à tous les niveaux et ne décroît pas avec le niveau déclaré : la volatilité médiane des portefeuilles est de 0,28 à 0,29 quel que soit le niveau. Il n'y a donc rien à calibrer de façon fiable.
+- **Pas de filtre de bande de volatilité du portefeuille**. 0 % des portefeuilles « conservative » et 0,5 % des « income » sont déjà dans leur bande : un tel filtre ne laisserait que des actifs qui réduisent le risque, ce que le re-ranker MPT favorise déjà.
+- **Démarrage à froid** : moyenne des embeddings des actifs détenus (pondérée par montant à la démo), sinon popularité filtrée par le plafond de risque. Un mélange avec la popularité pour les clients à 2 actifs ou moins n'améliore pas la validation : il n'est pas retenu.
 
 ## Données
 
@@ -87,7 +110,7 @@ Une interaction est un **achat**. Les ventes servent seulement à reconstruire l
 | Taille du split | Train 158 053 achats, 25 355 clients, 288 actifs. Test 6 134 achats, 3 455 clients, dont 1 035 absents du train |
 | Portefeuilles (`src/data/holdings.py`) | Vente supérieure à la position connue : position ramenée à 0 (556 couples, parts achetées avant 2018). Le même jour, achats avant ventes. Transactions partagées (comptes joints probables) : gardées pour chaque co-titulaire |
 | Prix (`src/data/asset_returns.py`) | Saut de plus de 50 % qui revient à ±20 % en 5 cotations : erreur de prix effacée (6 cas). Trous de 5 jours au plus comblés par le dernier prix |
-| μ et Σ | μ : moyenne exponentielle des rendements (`span=60`), annualisée. Σ : 252 derniers jours, Ledoit-Wolf. Actifs avec au moins 60 rendements dans la fenêtre |
+| μ et Σ | μ : moyenne exponentielle des rendements (`span=60`), annualisée, puis rétrécie vers la moyenne des actifs dans le re-ranker (δ = 1, voir plus haut). Σ : 252 derniers jours, Ledoit-Wolf. Actifs avec au moins 60 rendements dans la fenêtre |
 | Classes de risque 1 à 7 | Volatilité annualisée découpée selon l'échelle SRRI (0,5 / 2 / 5 / 10 / 15 / 25 %). Moins de 60 rendements : classe médiane de la sous-catégorie (28 actifs) |
 | ETF PEA (`src/data/pea/`) | 19 ETF lus sur justETF (éligibilité PEA et cotation à Paris vérifiées), pays tels que publiés, classe de risque calculée sur la volatilité justETF |
 

@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.data.asset_returns import shrink_mu
 from src.llm.profile import Profile, explain
 from src.rerank.mpt import mpt_rerank, portfolio_impact, risk_filter
 
@@ -16,8 +17,9 @@ class Recommender:
             self.item_embeddings = model["item_embeddings"].astype(np.float32)
             self.popular_order = model["popular_order"]
             self.mpt_weight = float(model["mpt_weight"].item()) if "mpt_weight" in model else 0.25
-        if not 0 <= self.mpt_weight <= 1:
-            raise ValueError("The model MPT weight must be in [0, 1]")
+            mu_shrinkage = float(model["mu_shrinkage"].item()) if "mu_shrinkage" in model else 0.0
+        if not 0 <= self.mpt_weight <= 1 or not 0 <= mu_shrinkage <= 1:
+            raise ValueError("The model MPT weight and expected-return shrinkage must be in [0, 1]")
         self.item_index = {isin: i for i, isin in enumerate(item_ids)}
         if len(item_ids) != len(self.item_index) or self.item_embeddings.ndim != 2:
             raise ValueError("The model must contain a two-dimensional embedding for each distinct ISIN")
@@ -29,7 +31,7 @@ class Recommender:
 
         asset_risk = pd.read_parquet(finance_dir / "asset_risk.parquet")
         self.risk_classes = asset_risk.set_index("ISIN")["risk_class"].dropna().astype(int).to_dict()
-        self.mu = pd.read_parquet(finance_dir / "mu.parquet")["mu"]
+        self.mu = shrink_mu(pd.read_parquet(finance_dir / "mu.parquet")["mu"].dropna(), mu_shrinkage)
         self.sigma = pd.read_parquet(finance_dir / "sigma.parquet")
         assets = pd.read_parquet(finance_dir / "assets.parquet")
         self.names = assets.set_index("ISIN")["assetName"].dropna().astype(str).to_dict()

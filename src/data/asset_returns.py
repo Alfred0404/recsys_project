@@ -51,6 +51,17 @@ def expected_returns(returns: pd.DataFrame, before, span=60) -> pd.Series:
     return mu[r.count() >= MIN_HISTORY].dropna()
 
 
+def shrink_mu(mu: pd.Series, delta: float) -> pd.Series:
+    """Pull expected returns toward their cross-sectional mean: (1 - delta) mu + delta mean(mu).
+
+    A 60-day mean return is a noisy estimate. With delta = 1 every candidate gets the same
+    expected return, so the MPT score ranks only by the variance it adds.
+    """
+    if not 0 <= delta <= 1:
+        raise ValueError("Shrinkage must be in [0, 1]")
+    return (1 - delta) * mu + delta * mu.mean()
+
+
 def covariance(returns: pd.DataFrame, before, window=TRADING_DAYS) -> pd.DataFrame:
     """Sigma over the last `window` days, Ledoit-Wolf shrinkage so it stays usable by the MPT score.
 

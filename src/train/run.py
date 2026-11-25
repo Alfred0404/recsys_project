@@ -234,6 +234,27 @@ def test_statistics(experiment: Experiment):
     }
 
 
+def cohort_metrics(experiment: Experiment, rankings: dict) -> dict:
+    """NDCG@10 for test users split by what the model knows about them before the test cutoff."""
+    def known(user):
+        return sum(item in experiment.item_index for item in experiment.test_history.get(user, ()))
+
+    users = experiment.test["customerID"].unique()
+    cohorts = {
+        "in_graph": [u for u in users if u in experiment.user_index],
+        "not_in_graph_with_history": [u for u in users if u not in experiment.user_index and known(u)],
+        "not_in_graph_no_history": [u for u in users if u not in experiment.user_index and not known(u)],
+        "two_assets_or_fewer": [u for u in users if known(u) <= 2],
+    }
+    result = {}
+    for cohort, members in cohorts.items():
+        targets = experiment.test[experiment.test["customerID"].isin(members)]
+        result[cohort] = {"users": len(members)} | {
+            name: evaluate(ranked, targets)["ndcg@10"] for name, ranked in rankings.items() if name != "random"
+        }
+    return result
+
+
 def run(args):
     start = time.perf_counter()
     torch.set_num_threads(args.threads)
@@ -281,16 +302,23 @@ def run(args):
         "cutoffs": {"train": experiment.t1.isoformat(), "test": experiment.t2.isoformat()},
         "counts": test_statistics(experiment),
     }
+    suitable = None
     if not args.skip_finance:
-        from src.eval.finance import evaluate_reranking
+        from src.eval.finance import evaluate_reranking, snapshot, suitable_targets
 
+        tables = snapshot(tx, experiment.t2, args.processed_dir)
         finance, financial_rankings = evaluate_reranking(
             scored, tx, experiment.t2, args.processed_dir, args.out, set(experiment.user_index), args.mpt_weight,
-            tolerance=args.risk_tolerance, penalty=args.risk_penalty,
+            tolerance=args.risk_tolerance, penalty=args.risk_penalty, mu_shrinkage=args.mu_shrinkage, tables=tables,
         )
+        suitable, finance["test_targets"] = suitable_targets(experiment.test, tables)
         summary["finance"] = finance
         rankings.update(financial_rankings)
     summary["test_metrics"] = {name: evaluate(ranked, experiment.test) for name, ranked in rankings.items()}
+    if suitable is not None:
+        # Only targets within each user's ceiling: what a suitable ranking can retrieve.
+        summary["suitable_target_metrics"] = {name: evaluate(ranked, suitable) for name, ranked in rankings.items()}
+    summary["cohort_ndcg@10"] = cohort_metrics(experiment, rankings)
     summary["elapsed_seconds"] = time.perf_counter() - start
 
     pd.DataFrame(loss + ablation_loss).to_csv(args.out / "loss.csv", index=False)
@@ -305,6 +333,7 @@ def run(args):
         train_cutoff=experiment.t1.isoformat(),
         test_cutoff=experiment.t2.isoformat(),
         mpt_weight=args.mpt_weight,
+        mu_shrinkage=args.mu_shrinkage,
     )
     (args.out / "metrics.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps(summary["test_metrics"], indent=2), flush=True)
@@ -323,7 +352,10 @@ def main():
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--contrastive-weight", type=float, default=0.05)
-    parser.add_argument("--mpt-weight", type=float, default=0.25, help="Pre-specified MPT weight for the test ablation")
+    parser.add_argument("--mpt-weight", type=float, default=0.25,
+                        help="MPT weight lambda, chosen on validation by python -m src.eval.tune")
+    parser.add_argument("--mu-shrinkage", type=float, default=1.0,
+                        help="Expected-return shrinkage toward the mean, chosen on validation by python -m src.eval.tune")
     parser.add_argument("--risk-tolerance", type=int, default=0,
                         help="Classes above the ceiling allowed in the penalized risk ablation (0 disables it)")
     parser.add_argument("--risk-penalty", type=float, default=0.5,
@@ -337,8 +369,8 @@ def main():
         parser.error("Epochs, patience, dimension, layers, steps and threads must be positive.")
     if not np.isfinite([args.lr, args.contrastive_weight]).all() or args.lr <= 0 or args.contrastive_weight <= 0:
         parser.error("Learning rate and contrastive weight must be finite and positive.")
-    if not 0 <= args.mpt_weight <= 1:
-        parser.error("MPT weight must be between zero and one.")
+    if not 0 <= args.mpt_weight <= 1 or not 0 <= args.mu_shrinkage <= 1:
+        parser.error("MPT weight and expected-return shrinkage must be between zero and one.")
     if not 0 <= args.risk_tolerance <= 6 or not np.isfinite(args.risk_penalty) or args.risk_penalty < 0:
         parser.error("Risk tolerance must be in [0, 6] and the risk penalty non-negative.")
     run(args)

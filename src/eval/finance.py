@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.data.asset_returns import asset_risk, covariance, expected_returns, returns_matrix
+from src.data.asset_returns import asset_risk, covariance, expected_returns, returns_matrix, shrink_mu
 from src.data.holdings import holdings_at, latest_before
 from src.llm.profile import RISK_LEVELS
 from src.rerank.mpt import mpt_rerank, portfolio_impact, risk_filter, risk_rerank
@@ -79,9 +79,37 @@ def select_examples(examples, warm_users):
             yield {"cohort": category, **row}
 
 
-def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25, tolerance=0, penalty=0.5):
-    tables = snapshot(tx, cutoff, processed)
-    mu = tables["mu"]["mu"].dropna()
+def user_level(labels: dict, user) -> tuple[int, str]:
+    """Dated questionnaire level, else the conservative serving default (level 1)."""
+    label = str(labels.get(user, "")).casefold()
+    # Provider Predicted_* labels have no documented pre-cutoff training
+    # provenance. Use dated questionnaire profiles or the serving default.
+    return RISK_LABELS.get(label, 1), "observed" if label in RISK_LABELS else "default"
+
+
+def suitable_targets(targets: pd.DataFrame, tables) -> tuple[pd.DataFrame, dict]:
+    """Keep the target purchases at or below each user's risk ceiling.
+
+    A ranking that respects the ceiling can only retrieve these, so they bound what
+    the filtered rankings can score. Purchases of unclassified assets are dropped.
+    """
+    classes = tables["asset_risk"].set_index("ISIN")["risk_class"].astype(int)
+    labels = tables["customers"].set_index("customerID")["riskLevel"].to_dict()
+    ceilings = {user: RISK_LEVELS[user_level(labels, user)[0]][0] for user in targets["customerID"].unique()}
+    known = targets.loc[targets["ISIN"].isin(classes.index)]
+    within = known["ISIN"].map(classes) <= known["customerID"].map(ceilings)
+    stats = {
+        "targets_with_class": len(known),
+        "above_ceiling_share": float(1 - within.mean()) if len(known) else None,
+        "users_with_suitable_target": int(known.loc[within, "customerID"].nunique()),
+    }
+    return known.loc[within], stats
+
+
+def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25, tolerance=0, penalty=0.5,
+                       mu_shrinkage=0.0, tables=None):
+    tables = snapshot(tx, cutoff, processed) if tables is None else tables
+    mu = shrink_mu(tables["mu"]["mu"].dropna(), mu_shrinkage)
     sigma = tables["sigma"]
     covered_isins = set(mu.index) & set(sigma.index) & set(sigma.columns)
     classes = tables["asset_risk"].set_index("ISIN")["risk_class"].astype(int).to_dict()
@@ -98,11 +126,7 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25,
         risk_counts["risk_tolerant"] = Counter()
     level_source = Counter()
     for user, scores in scored.items():
-        label = str(labels.get(user, "")).casefold()
-        # Provider Predicted_* labels have no documented pre-cutoff training
-        # provenance. Use dated questionnaire profiles or the serving default.
-        level = RISK_LABELS.get(label, 1)
-        source = "observed" if label in RISK_LABELS else "default"
+        level, source = user_level(labels, user)
         level_source[source] += 1
         ceiling, gamma = RISK_LEVELS[level]
         relevance = dict(scores)
@@ -157,6 +181,7 @@ def evaluate_reranking(scored, tx, cutoff, processed, out, warm_users, lam=0.25,
     summary = {
         "as_of": cutoff.isoformat(),
         "mpt_weight": lam,
+        "mu_shrinkage": mu_shrinkage,
         "risk_tolerance": tolerance,
         "risk_penalty": penalty,
         "allocation": ALLOCATION,
