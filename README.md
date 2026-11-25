@@ -26,17 +26,27 @@ dans `dataset/experiment/`. Le graphe utilise uniquement les achats d'entraînem
 Le checkpoint est choisi sur la validation, puis les modèles et références sont
 comparés sur les mêmes utilisateurs et le même catalogue de test.
 
-Ouvrez deux terminaux avec l'environnement activé, puis lancez l'API et l'interface :
+Lancez le serveur avec l'environnement activé :
 
 ```bash
 python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 ```
 
+Ouvrez http://127.0.0.1:8000 : une seule page, en français ou en anglais. Décrivez
+votre portefeuille dans la barre de recherche (les actifs cités sont reconnus), ajustez
+les options, puis cliquez sur un actif suggéré pour voir l'évolution de son cours.
+Les courbes utilisent `dataset/processed/close_prices.parquet`, produit par
+`load_and_check`. Le site (`web/`) est servi par la même API, sans étape de
+build ni connexion internet. Pour la montrer depuis un autre appareil du même réseau,
+lancez avec `--host 0.0.0.0` et ouvrez `http://<IP de la machine>:8000`.
+
+L'ancienne interface Streamlit reste disponible, dans un second terminal :
+
 ```bash
 python -m streamlit run app/streamlit_app.py
 ```
 
-Ouvrez l'adresse affichée par Streamlit (port 8501 par défaut). Le serveur charge
+Le serveur charge
 les embeddings du run et les tables financières datées au démarrage. Le catalogue
 d'expérimentation est historique. La démo sert à observer les compromis du classement.
 
