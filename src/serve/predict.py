@@ -35,9 +35,11 @@ class Recommender:
         self.sigma = pd.read_parquet(finance_dir / "sigma.parquet")
         assets = pd.read_parquet(finance_dir / "assets.parquet")
         self.names = assets.set_index("ISIN")["assetName"].dropna().astype(str).to_dict()
+        self.categories = assets.set_index("ISIN").get("assetCategory", pd.Series(dtype=str)).dropna().astype(str).to_dict()
 
     def catalog(self) -> list[dict]:
-        return [{"isin": isin, "name": self.names.get(isin, isin)} for isin in self.item_ids]
+        return [{"isin": isin, "name": self.names.get(isin, isin), "category": self.categories.get(isin),
+                 "risk_class": self.risk_classes.get(isin)} for isin in self.item_ids]
 
     def predict(self, holdings: dict[str, float], profile: Profile, k: int = 10) -> dict:
         known = [isin for isin in holdings if isin in self.item_index]

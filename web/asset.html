@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complément</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="index.html">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="14" width="4" height="7.5" rx="1" stroke="#f2f1ee" stroke-width="1.4"/><rect x="10" y="9" width="4" height="12.5" rx="1" fill="#b5502b"/><rect x="17.5" y="3.5" width="4" height="18" rx="1" stroke="#f2f1ee" stroke-width="1.4"/></svg>
+    <span data-brand></span>
+  </a>
+  <nav class="nav-links">
+    <a href="index.html#ask" data-i18n="nav_search"></a>
+    <a href="assets.html" data-i18n="nav_assets"></a>
+    <button class="btn lang" type="button" aria-label="Langue / Language"></button>
+  </nav>
+</header>
+
+<main class="asset">
+  <a class="back" href="index.html#results" data-i18n="back"></a>
+  <h1 id="name"></h1>
+  <p class="meta" id="meta"></p>
+
+  <div class="chart-card glass">
+    <div class="chart-top">
+      <div class="big-change num" id="change"></div>
+      <div class="ranges" id="ranges"></div>
+    </div>
+    <div class="chart" id="chart"></div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <section class="why glass" id="why" hidden></section>
+  <p class="footnote" data-i18n="footnote"></p>
+</main>
+
+<script src="i18n.js"></script>
+<script src="chart.js"></script>
+<script src="asset.js"></script>
+</body>
+</html>

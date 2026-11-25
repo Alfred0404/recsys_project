@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complément</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="#">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="14" width="4" height="7.5" rx="1" stroke="#f2f1ee" stroke-width="1.4"/><rect x="10" y="9" width="4" height="12.5" rx="1" fill="#b5502b"/><rect x="17.5" y="3.5" width="4" height="18" rx="1" stroke="#f2f1ee" stroke-width="1.4"/></svg>
+    <span data-brand></span>
+  </a>
+  <nav class="nav-links">
+    <a href="index.html#ask" data-i18n="nav_search"></a>
+    <a href="assets.html" data-i18n="nav_assets"></a>
+    <button class="btn lang" type="button" aria-label="Langue / Language"></button>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1 data-i18n="hero"></h1>
+    <p class="sub" data-i18n="hero_sub"></p>
+    <div class="cta">
+      <a class="btn primary" href="#ask"><span data-i18n="cta_try"></span></a>
+    </div>
+    <div class="preview glass" aria-hidden="true">
+      <div class="preview-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+        <span class="typed" data-i18n="preview_query"></span>
+      </div>
+      <div class="preview-rows" id="preview-rows"></div>
+      <div class="preview-foot"><span data-i18n="preview_foot"></span><span>FAR-Trans · NLGCL</span></div>
+    </div>
+  </section>
+
+  <section class="ask" id="ask">
+    <h2 data-i18n="ask_title"></h2>
+    <form class="search-wrap" id="form" autocomplete="off">
+      <div class="search glass">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+        <input id="query" type="text" maxlength="500" data-i18n-placeholder="placeholder" data-i18n-label="search_label"
+               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
+        <button class="btn primary" type="submit" id="go" data-i18n="go"></button>
+        <button class="btn toggle" type="button" id="toggle" aria-expanded="false" aria-controls="options" data-i18n-label="options">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg>
+        </button>
+      </div>
+      <ul class="suggest glass" id="suggest" role="listbox" hidden></ul>
+    </form>
+    <div class="chips" id="chips" aria-live="polite"></div>
+    <div class="options glass" id="options" inert>
+      <div class="options-inner"><div class="option-grid" id="option-grid"></div></div>
+    </div>
+    <p class="hint" data-i18n="hint"></p>
+    <p class="hint error" id="error" hidden></p>
+  </section>
+
+  <section class="results" id="results" hidden aria-live="polite"></section>
+</main>
+
+<footer class="site"><span data-brand></span> · Ethan Petain, Alfred De Vulpian, Nicolas Cottez-Abrate, Thomas Confolent · <a href="https://github.com/Alfred0404/recsys_project">GitHub</a></footer>
+
+<script src="i18n.js"></script>
+<script src="chart.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complément</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="index.html">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="14" width="4" height="7.5" rx="1" stroke="#f2f1ee" stroke-width="1.4"/><rect x="10" y="9" width="4" height="12.5" rx="1" fill="#b5502b"/><rect x="17.5" y="3.5" width="4" height="18" rx="1" stroke="#f2f1ee" stroke-width="1.4"/></svg>
+    <span data-brand></span>
+  </a>
+  <nav class="nav-links">
+    <a href="index.html#ask" data-i18n="nav_search"></a>
+    <a href="assets.html" data-i18n="nav_assets" aria-current="page"></a>
+    <button class="btn lang" type="button" aria-label="Langue / Language"></button>
+  </nav>
+</header>
+
+<main class="catalog">
+  <h1 data-i18n="catalog_title"></h1>
+  <p class="lede" id="lede"></p>
+  <div class="search glass">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+    <input id="filter" type="search" autocomplete="off" data-i18n-placeholder="catalog_search" data-i18n-label="catalog_search">
+  </div>
+  <div class="filters" id="filters"></div>
+  <p class="error" id="error" hidden></p>
+  <div class="rows glass" id="list" aria-live="polite"></div>
+  <div class="more"><button class="btn" type="button" id="more" data-i18n="more" hidden></button></div>
+  <p class="footnote" data-i18n="footnote"></p>
+</main>
+
+<script src="i18n.js"></script>
+<script src="chart.js"></script>
+<script src="assets.js"></script>
+</body>
+</html>
