@@ -17,7 +17,7 @@ function loadPage(filename, globals = {}) {
     return elements.get(id);
   };
   const context = vm.createContext({
-    URLSearchParams, AbortSignal,
+    URLSearchParams, AbortController, setTimeout, clearTimeout, LANG: "en",
     document: { getElementById: element, addEventListener(event, fn) { listeners[event] = fn; } },
     el: (tag, attrs, ...children) => ({ tag, attrs, children }),
     t: (key) => key, fmt: (value, digits = 0) => Number(value).toFixed(digits),
@@ -70,12 +70,12 @@ test("sparse price windows never use older quotes or fabricate volatility", () =
   assert.equal(context.stats(quotes).vol, null);
 });
 
-test("asset explanation uses the exact stored session and leaves facts visible after expiry", async () => {
+test("asset explanation uses the exact stored session and falls back to the displayed facts after expiry", async () => {
   const view = {
     session: "session-uuid",
     result: {
       recommendation_id: "recommendation-uuid", ranking_source: "popularity", profile: { ceiling: 5 },
-      items: [{ isin: "GR123", risk_class: 4, variance_change: null }],
+      items: [{ isin: "GR123", risk_class: 4, variance_change: -0.0042 }],
     },
   };
   const requests = [];
@@ -91,26 +91,65 @@ test("asset explanation uses the exact stored session and leaves facts visible a
   run('page.recommendation = storedRecommendation(new URLSearchParams("rec=recommendation-uuid"), "GR123")');
   await context.requestExplanation();
   assert.deepEqual(requests, [["explain", {
-    recommendation_id: "recommendation-uuid", session_id: "session-uuid", isin: "GR123",
+    recommendation_id: "recommendation-uuid", session_id: "session-uuid", isin: "GR123", language: "en",
   }]]);
   const markup = JSON.stringify(element("why").children);
   assert.match(markup, /why_popularity/);
-  assert.match(markup, /why_source_facts/);
-  assert.match(markup, /why_explain_expired/);
+  assert.match(markup, /why_explain_eligible/);
+  assert.match(markup, /why_source_template/);
   assert.doesNotMatch(markup, /why_rank|why_source_llm/);
 });
 
-test("only a verified model response receives the local model label", async () => {
-  let explanation = { isin: "GR123", status: "verified", source: "llm", explanation: "Verified text." };
+test("a popularity suggestion explains historical rank and risk eligibility without a portfolio simulation", async () => {
   const { context, element, run } = loadPage("asset.js", {
-    fetch: async () => ({ status: 200, ok: true, json: async () => explanation }),
+    fetch: async () => assert.fail("Risk facts do not need a model call when impact is unavailable"),
+    t: (key, values) => values ? `${key} ${Object.values(values).join(" ")}` : key,
   });
-  run('page.recommendation = { id: "r", session: "s", item: { isin: "GR123" }, rank: 1 }');
+  run(`page.recommendation = { id: "r", session: "s", item: { isin: "GR123", risk_class: 4, popularity_rank: 33 },
+      rank: 4, rankingSource: "popularity", ceiling: 5, catalogSize: 288 }`);
   await context.requestExplanation();
+  const paragraph = element("why").children.find((node) => node.attrs.lang === "en");
+  assert.equal(paragraph.children[0], "why_explain_popularity_rank 33 288 why_explain_eligible 4 5 why_explain_add_holdings");
+  assert.doesNotMatch(JSON.stringify(element("why").children), /why_explain_impact|why_source_llm/);
+});
+
+test("asset explanation appears immediately and adopts verified text in the active language", async () => {
+  let resolveResponse;
+  const { context, element, run } = loadPage("asset.js", {
+    fetch: () => new Promise((resolve) => { resolveResponse = resolve; }),
+    t: (key, values) => values ? `${key} ${Object.values(values).join(" ")}` : key,
+  });
+  run(`page.recommendation = { id: "r", session: "s", item: { isin: "GR123", risk_class: 3, variance_change: -0.02254 },
+      rank: 1, ceiling: 5, rankingSource: "portfolio_embeddings" }`);
+  const paragraph = () => element("why").children.find((node) => node.attrs.lang);
+  const pending = context.requestExplanation();
+  assert.equal(paragraph().attrs.lang, "en");
+  assert.equal(paragraph().children[0], "why_explain_portfolio why_explain_eligible 3 5 why_explain_impact -0.0225");
+  assert.match(JSON.stringify(element("why").children), /why_explaining/);
+  resolveResponse({ ok: true, json: async () => ({
+    isin: "GR123", language: "en", status: "verified", source: "llm", explanation: "Verified in English.",
+  }) });
+  await pending;
+  assert.equal(paragraph().children[0], "why_explain_portfolio why_explain_cap 5 Verified in English.");
   assert.match(JSON.stringify(element("why").children), /why_source_llm/);
-  explanation = { ...explanation, status: "incorrect_facts", source: "template", explanation: "Calculated text." };
+  run('LANG = "fr"; renderWhy()');
+  assert.equal(paragraph().attrs.lang, "fr");
+  assert.doesNotMatch(JSON.stringify(element("why").children), /Verified in English|why_source_llm/);
+});
+
+test("unverified model text leaves the calculated explanation in place", async () => {
+  const { context, element, run } = loadPage("asset.js", {
+    fetch: async () => ({ ok: true, json: async () => ({
+      isin: "GR123", language: "en", status: "incorrect_facts", source: "llm", explanation: "Incorrect text.",
+    }) }),
+  });
+  run(`page.recommendation = { id: "r", session: "s", item: { isin: "GR123", risk_class: 3, variance_change: -0.0225 },
+      rank: 1, ceiling: 5, rankingSource: "portfolio_embeddings" }`);
   await context.requestExplanation();
-  assert.match(JSON.stringify(element("why").children), /why_source_template/);
+  const markup = JSON.stringify(element("why").children);
+  assert.match(markup, /why_explain_eligible/);
+  assert.match(markup, /why_source_template/);
+  assert.doesNotMatch(markup, /Incorrect text|why_source_llm/);
 });
 
 test("search matches words in any order, ignores accents, ranks ISIN and name starts first", () => {

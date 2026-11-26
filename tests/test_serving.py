@@ -52,6 +52,9 @@ def test_unseen_portfolios_use_popularity_and_invalid_amounts_are_rejected(demo_
     assert result["ranking_source"] == "popularity"
     assert result["unrecognized_isins"] == ["UNKNOWN"]
     assert result["items"][0]["isin"] == "B"
+    catalog = {asset["isin"]: asset for asset in client.get("/assets").json()}
+    assert result["catalog_size"] == len(catalog) == 4
+    assert result["items"][0]["popularity_rank"] == catalog["B"]["popularity"] == 2
     assert result["items"][0]["variance_change"] is None
     assert client.post("/recommend", json={"holdings": {"A": -2}}).status_code == 422
 

@@ -28,6 +28,9 @@ class Recommender:
         if sorted(self.popular_order.tolist()) != list(range(len(item_ids))):
             raise ValueError("The model popularity order must list each distinct index once")
         self.item_ids = item_ids
+        self.popularity_ranks = {
+            item_ids[int(index)]: position + 1 for position, index in enumerate(self.popular_order)
+        }
 
         asset_risk = pd.read_parquet(finance_dir / "asset_risk.parquet")
         self.risk_classes = asset_risk.set_index("ISIN")["risk_class"].dropna().astype(int).to_dict()
@@ -38,10 +41,10 @@ class Recommender:
         self.categories = assets.set_index("ISIN").get("assetCategory", pd.Series(dtype=str)).dropna().astype(str).to_dict()
 
     def catalog(self) -> list[dict]:
-        # popularity: 1 = most bought in training, so the demo can list well-known assets first.
-        rank = {int(index): position + 1 for position, index in enumerate(self.popular_order)}
+        # Rank 1 identifies the asset bought by the most distinct training customers.
         return [{"isin": isin, "name": self.names.get(isin, isin), "category": self.categories.get(isin),
-                 "risk_class": self.risk_classes.get(isin), "popularity": rank[i]} for i, isin in enumerate(self.item_ids)]
+                 "risk_class": self.risk_classes.get(isin), "popularity": self.popularity_ranks[isin]}
+                for isin in self.item_ids]
 
     def predict(self, holdings: dict[str, float], profile: Profile, k: int = 10) -> dict:
         known = [isin for isin in holdings if isin in self.item_index]
@@ -79,6 +82,7 @@ class Recommender:
                 "name": self.names.get(isin, isin),
                 "score": relevance[isin],
                 "risk_class": self.risk_classes[isin],
+                "popularity_rank": self.popularity_ranks[isin],
                 "variance_change": float(changes[isin]) if isin in changes else None,
                 "explanation": explain(self.risk_classes[isin], changes.get(isin)),
             }
@@ -86,6 +90,7 @@ class Recommender:
         ]
         return {
             "items": items,
+            "catalog_size": len(self.item_ids),
             "ranking_source": ranking_source,
             "unrecognized_isins": [isin for isin in holdings if isin not in self.item_index],
         }

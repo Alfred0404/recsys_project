@@ -64,10 +64,36 @@ def test_explain_uses_issued_facts_and_requires_same_session(client):
     response = client.post("/explain", json={**payload, "risk_class": 7, "variance_change": 99})
     assert response.status_code == 200
     explanation = response.json()
+    assert explanation["language"] == "fr"
     assert explanation["source"] == "template"
     assert explanation["status"] == "not_configured"
     facts = ExplanationFacts(item["risk_class"], item["variance_change"])
     assert assess_sentence(explanation["explanation"], facts) == "faithful"
+
+
+def test_explain_returns_english_facts_with_or_without_the_local_model(client):
+    session = str(uuid4())
+    ranking = client.post("/recommend", json={"holdings": {"A": 1000}, "session_id": session}).json()
+    payload = {"recommendation_id": ranking["recommendation_id"], "isin": "B",
+               "session_id": session, "language": "en"}
+    sentence = ("The estimated risk class is 3/7 and, with a hypothetical 10% allocation, "
+                "annualized variance would change by -0.0072.")
+
+    fallback = client.post("/explain", json=payload).json()
+    assert (fallback["language"], fallback["source"], fallback["explanation"]) == ("en", "template", sentence)
+
+    def generate(prompt):
+        assert "Copy only this English JSON object" in prompt
+        return {"explanation": sentence}
+
+    client.app.state.generator = generate
+    verified = client.post("/explain", json=payload).json()
+    assert (verified["language"], verified["source"], verified["status"]) == ("en", "llm", "verified")
+
+    client.app.state.generator = lambda _: {"explanation": sentence.replace("-0.0072", "+0.0072")}
+    rejected = client.post("/explain", json=payload).json()
+    assert (rejected["source"], rejected["status"], rejected["explanation"]) == ("template", "incorrect_facts", sentence)
+    assert client.post("/explain", json={**payload, "language": "es"}).status_code == 422
 
 
 def test_llm_explainer_never_emits_wrong_numbers_or_unsupported_claims():
