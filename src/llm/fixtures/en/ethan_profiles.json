@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ethan-01",
+    "author": "ethan",
+    "text": "I am moving abroad in a year and this money will pay for my first rent and my deposit. I cannot risk seeing it go down before I leave.",
+    "risk_level": 1
+  },
+  {
+    "id": "ethan-02",
+    "author": "ethan",
+    "text": "My parents gave me this sum for my studies and I need to keep it available. Even though stocks appeal to me, I would rather take no risk and keep every euro.",
+    "risk_level": 1
+  },
+  {
+    "id": "ethan-03",
+    "author": "ethan",
+    "text": "I have a visa application coming up and I must be able to show these savings in full in six months. Whatever happens, the balance cannot go down.",
+    "risk_level": 1
+  },
+  {
+    "id": "ethan-04",
+    "author": "ethan",
+    "text": "I start working in two years and I want my small savings to grow a bit more than a savings account. I am fine with a 5% drop, but no more than that.",
+    "risk_level": 2
+  },
+  {
+    "id": "ethan-05",
+    "author": "ethan",
+    "text": "My internship brings in a little money and I am aiming at a project in five years. I accept my value moving by a few percent, but I would not sleep well with a 15% loss.",
+    "risk_level": 2
+  },
+  {
+    "id": "ethan-06",
+    "author": "ethan",
+    "text": "My goal is to buy my first used car in five or six years. A mix of bonds and a little equity suits me, with limited losses if possible.",
+    "risk_level": 2
+  },
+  {
+    "id": "ethan-07",
+    "author": "ethan",
+    "text": "I am planning a down payment for a home in seven years. I want growth with half of the capital in equities, and I could bear a 20% fall if it does not last too long.",
+    "risk_level": 3
+  },
+  {
+    "id": "ethan-08",
+    "author": "ethan",
+    "text": "I am a student and I do not need this money before eight years. I am comfortable with real ups and downs, but I would want some safer assets as a cushion in case of a crash.",
+    "risk_level": 3
+  },
+  {
+    "id": "ethan-09",
+    "author": "ethan",
+    "text": "I am 22, I have no financial obligations and I will not use this money before I am 45. I only want equities, I can lose half of the value in a year and I would keep investing.",
+    "risk_level": 4
+  },
+  {
+    "id": "ethan-10",
+    "author": "ethan",
+    "text": "My goal is maximum growth over twenty years, with no planned withdrawal. Falling markets let me buy cheaper, and I will not sell out of fear.",
+    "risk_level": 4
+  }
+]

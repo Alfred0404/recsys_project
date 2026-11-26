@@ -1,0 +1,62 @@
+[
+  {
+    "id": "thomas-01",
+    "author": "thomas",
+    "text": "This money is going to be the down payment on a home next summer. Even a small drop at the time I withdraw it would be a problem for me.",
+    "risk_level": 1
+  },
+  {
+    "id": "thomas-02",
+    "author": "thomas",
+    "text": "I am considering investments for the next five years. I prefer a regular income and I can accept small variations.",
+    "risk_level": 2
+  },
+  {
+    "id": "thomas-03",
+    "author": "thomas",
+    "text": "My horizon is eight years. I want growth but I would keep part of it stable. A temporary 12% drop would not make me sell.",
+    "risk_level": 3
+  },
+  {
+    "id": "thomas-04",
+    "author": "thomas",
+    "text": "These savings are for in fifteen years at least. I am mainly looking for long-term growth, even with a 35% drop along the way.",
+    "risk_level": 4
+  },
+  {
+    "id": "thomas-05",
+    "author": "thomas",
+    "text": "I would like a good return, but I must preserve the capital. I might need the money in a few months.",
+    "risk_level": 1
+  },
+  {
+    "id": "thomas-06",
+    "author": "thomas",
+    "text": "I will leave the money invested for at least ten years. I accept sharp drawdowns and would keep investing after a 30% loss to pursue growth.",
+    "risk_level": 4
+  },
+  {
+    "id": "thomas-07",
+    "author": "thomas",
+    "text": "I do not need the money for a few years. I can handle some fluctuations, but a significant loss would keep me awake at night. Stability comes first.",
+    "risk_level": 2
+  },
+  {
+    "id": "thomas-08",
+    "author": "thomas",
+    "text": "I want a balanced portfolio over seven years. I can take moderate losses, but I would reduce my positions if the risk became too high.",
+    "risk_level": 3
+  },
+  {
+    "id": "thomas-09",
+    "author": "thomas",
+    "text": "I am just starting out and I would like to understand the options. I do not yet know my horizon or the losses I could bear.",
+    "risk_level": 1
+  },
+  {
+    "id": "thomas-10",
+    "author": "thomas",
+    "text": "No withdrawal planned for twenty years. Long-term return is my priority. Even after large drops, I would keep my investments.",
+    "risk_level": 4
+  }
+]

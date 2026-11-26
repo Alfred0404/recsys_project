@@ -1,0 +1,62 @@
+[
+  {
+    "id": "alfred-01",
+    "author": "alfred",
+    "text": "I am retired and this investment tops up my pension every month. I cannot afford to see the capital go down.",
+    "risk_level": 1
+  },
+  {
+    "id": "alfred-02",
+    "author": "alfred",
+    "text": "I want to try very volatile stocks to make money quickly, but I need this money to pay my tuition fees in September.",
+    "risk_level": 1
+  },
+  {
+    "id": "alfred-03",
+    "author": "alfred",
+    "text": "This is my emergency fund. I want to be able to get it back at any time, without any loss, in case something unexpected happens.",
+    "risk_level": 1
+  },
+  {
+    "id": "alfred-04",
+    "author": "alfred",
+    "text": "I am preparing a project in four or five years. A 5% drop does not bother me, but beyond 10% I would start to worry.",
+    "risk_level": 2
+  },
+  {
+    "id": "alfred-05",
+    "author": "alfred",
+    "text": "I want a bit more than a savings account over the next few years, mostly bonds with a small share of shares. Large swings would worry me.",
+    "risk_level": 2
+  },
+  {
+    "id": "alfred-06",
+    "author": "alfred",
+    "text": "I am investing for my children's education in ten years. I want growth, but I would keep about half in more stable assets.",
+    "risk_level": 3
+  },
+  {
+    "id": "alfred-07",
+    "author": "alfred",
+    "text": "Horizon of six to eight years. I have already lived through a 15% fall without selling anything, but a 40% drop would make me reduce my positions.",
+    "risk_level": 3
+  },
+  {
+    "id": "alfred-08",
+    "author": "alfred",
+    "text": "I am 25 and I invest part of my salary every month for my retirement. Crashes are chances to buy cheaper.",
+    "risk_level": 4
+  },
+  {
+    "id": "alfred-09",
+    "author": "alfred",
+    "text": "I will not need this inheritance for at least twenty years. I aim for maximum return and I accept that the portfolio may lose half of its value along the way.",
+    "risk_level": 4
+  },
+  {
+    "id": "alfred-10",
+    "author": "alfred",
+    "text": "My income as an entrepreneur more than covers my needs. This money can stay invested in stocks for the long term, even in a very turbulent market.",
+    "risk_level": 4
+  }
+]
