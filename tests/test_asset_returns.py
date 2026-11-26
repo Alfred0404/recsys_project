@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.data.asset_returns import (asset_risk, covariance, drop_price_glitches, expected_returns,
                              returns_matrix)

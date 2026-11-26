@@ -40,6 +40,10 @@ Depuis le dossier du dépôt, avec Python 3.11 ou plus récent.
    python -m src.train.run
    ```
 
+   Sous Linux, installez d'abord la version CPU de torch, sinon pip télécharge la version CUDA
+   (environ 2,5 Go) : `python -m pip install "torch>=2.2,<3" --index-url https://download.pytorch.org/whl/cpu`.
+   `run.sh` le fait tout seul.
+
 3. Lancez le serveur (voir plus bas) et ouvrez http://127.0.0.1:8000.
 
 Pour lancer les tests, installez aussi les outils de test. Les tests n'ont besoin ni des
@@ -195,6 +199,9 @@ popularité (0,147), alors que LightGCN fait 0,160 : c'est la principale limite 
 |---|---|
 | `python -m src.train.run --risk-tolerance 1` | Run complet, avec en plus l'ablation du filtre tolérant (une classe au-dessus du plafond, pénalisée) |
 | `python -m src.eval.tune` | Choisit λ et le rétrécissement de μ sur la **validation** (`tuning/validation_grid.csv`, `tuning/selected.json`). Les valeurs retenues sont les défauts de `src.train.run` |
+| `python -m src.train.run --seeds 42 1 2` | Même run sur 3 graines, moyenne et écart-type de chaque métrique (`dataset/experiment-multi/metrics.json`) : ce sont les chiffres de la section Résultats |
+| `python -m src.train.tune_nlgcl --contrastive-weights 0.05 --temperatures 0.2` | Compare NLGCL et LightGCN sur la **validation** pour une grille de poids du contraste et de températures (`nlgcl_tuning/`). Ajoutez `--epochs 30` pour revoir pourquoi la limite est passée à 80 |
+| `python -m src.serve.benchmark_api` | Latence réelle de `/recommend` sur le serveur lancé (budget de 2 s ; `--check-deferred` mesure aussi `/explain`) |
 | `python -m src.eval.lambda_sweep` | Courbe pertinence / diversification sur le test pour chaque λ (`lambda_sweep/`) |
 | `python -m src.rerank.calibrate` | γ implicite des portefeuilles réels par niveau de risque (`gamma_calibration.json`) |
 | `python -m src.llm.evaluate_profiles` | Profil contre les vrais `riskLevel` (modèle local requis) |
