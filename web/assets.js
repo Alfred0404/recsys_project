@@ -39,7 +39,7 @@ async function render() {
     return el("a", { class: "row", href: `asset.html?isin=${encodeURIComponent(a.isin)}&from=assets` },
       el("span", { class: "name" }, a.name, el("small", {}, a.isin)),
       el("span", { class: "cat" }, a.category ? t(`cat_${a.category}`) : ""),
-      el("span", { class: "risk" }, el("b", { class: "num" }, a.risk_class ? `${a.risk_class}/7` : "–"), el("br"), t("risk")),
+      el("span", { class: "risk", "data-risk": String(a.risk_class || "") }, el("b", { class: "num" }, a.risk_class ? `${a.risk_class}/7` : "–"), el("br"), t("risk")),
       series ? sparkline(series.points, up) : el("span"),
       series ? el("span", { class: `change num ${up ? "up" : "down"}` }, pct(series.change),
         el("small", {}, `${series.start} – ${series.end}`)) : el("span"));
