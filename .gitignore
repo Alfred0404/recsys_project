@@ -4,3 +4,6 @@ __pycache__/
 .venv/
 .DS_Store
 node_modules/
+
+# Démo vidéo (fichiers lourds, générés)
+web/video/

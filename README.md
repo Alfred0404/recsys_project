@@ -1,14 +1,18 @@
-# Recommandation financière (FAR-Trans, NLGCL + MPT)
+# Spread by Masdaq : recommandation financière (FAR-Trans, NLGCL + MPT)
 
-Projet d'équipe : recommandation d'actifs par GNN (NLGCL), re-ranking selon la théorie moderne du portefeuille (MPT) et filtre de risque, avec profil et explications par LLM. Les documents de cadrage sont dans [docs/](docs/).
+Spread propose à un investisseur particulier les actifs qui complètent son portefeuille au lieu de le dupliquer : un GNN (NLGCL) apprend sur de vrais achats quels actifs vont ensemble, un filtre retire tout ce qui dépasse le plafond de risque de l'investisseur, puis un re-ranking selon la théorie moderne du portefeuille (MPT) place en tête les actifs qui réduisent la variance. Un LLM local fixe le profil à partir d'une phrase libre et explique chaque suggestion, chiffres vérifiés. Outil pédagogique, pas un conseil en investissement.
+
+Le **[rapport final](docs/Finance_Recommendation_Final_Report.pdf)** (3 pages) résume la méthode et les résultats. Le plan, l'architecture et les rapports d'étape sont dans [docs/](docs/).
 
 **Équipe** : Ethan Petain (Project Lead), Alfred De Vulpian (Data Engineer), Nicolas Cottez-Abrate (Lead ML Engineer), Thomas Confolent (ML Engineer Ops).
 
 ## Lancement rapide
 
-Avec Python 3.11 ou plus récent installé, une seule commande depuis le dossier du dépôt :
+Avec Python 3.11 ou plus récent et Git installés :
 
 ```bash
+git clone https://github.com/Alfred0404/recsys_project.git
+cd recsys_project
 run.bat        # Windows (double-clic possible)
 ./run.sh       # macOS / Linux
 ```
@@ -22,7 +26,9 @@ démarrent en quelques secondes. `Ctrl+C` arrête le serveur.
 
 ## Reproduire l'expérience et lancer la démo
 
-Depuis le dossier du dépôt, avec Python 3.11 ou plus récent.
+Avec Python 3.11 ou plus récent.
+
+0. Clonez le dépôt : `git clone https://github.com/Alfred0404/recsys_project.git` puis `cd recsys_project`.
 
 1. Créez et activez l'environnement :
 
@@ -101,11 +107,11 @@ Les valeurs affichées restent validées par les règles du questionnaire. La
 vérification LLM s'exécute à la demande, séparément de `/recommend`.
 
 ```bash
-python -m src.eval.profile_benchmark
+python -m src.llm.profile_benchmark
 ```
 
 Ce test compare la première réponse du modèle et le profil vérifié sur neuf cas
-synthétiques. Le [dernier rapport](docs/Finance_Recommendation_Week3_Status_Report_v3.pdf)
+synthétiques. Le [rapport final](docs/Finance_Recommendation_Final_Report.pdf)
 contient les mesures de l'expérience et de la démo.
 
 ## Architecture
@@ -157,30 +163,34 @@ questionnaire / texte ─► src/llm : profil (plafond, γ) ─► src/serve : s
 
 ## Résultats
 
-Run `python -m src.train.run` (graine 42), sur le test temporel : 3 455 clients, dont 1 035 absents du train.
-Le détail par cohorte et les mesures financières sont dans `dataset/experiment/metrics.json`.
+Moyenne ± écart-type sur cinq graines (`python -m src.train.run --seeds 42 1 2 3 4`), sur le test
+temporel : 3 455 clients, dont 1 035 absents du train. La colonne « cibles sous le plafond » ne garde
+que les 564 clients qui ont acheté au moins un actif compatible avec leur plafond. Le détail par
+cohorte est dans `dataset/experiment-multi/metrics.json` (`dataset/experiment/metrics.json` pour le
+run servi, graine 42).
 
-| Classement | NDCG@10 | Recall@20 | NDCG@10, cibles sous le plafond |
-|---|---|---|---|
-| Aléatoire | 0,015 | 0,050 | 0,024 |
-| Les plus populaires | 0,166 | 0,346 | 0,165 |
-| LightGCN (ablation, sans contraste) | 0,197 | 0,399 | 0,229 |
-| NLGCL | 0,189 | 0,389 | 0,217 |
-| NLGCL + filtre de risque | 0,051 | 0,099 | 0,356 |
-| NLGCL + filtre + MPT (λ = 0,25) | 0,049 | 0,099 | 0,344 |
+| Classement | NDCG@10 | Recall@20 | NDCG@10, cibles sous le plafond | Top 10 au-dessus du plafond |
+|---|---|---|---|---|
+| Aléatoire | 0,014 ± 0,001 | 0,048 ± 0,002 | 0,019 ± 0,004 | – |
+| Les plus populaires | 0,167 | 0,346 | 0,165 | – |
+| LightGCN (ablation, sans contraste) | 0,194 ± 0,002 | 0,395 ± 0,003 | 0,224 ± 0,004 | – |
+| NLGCL | 0,192 ± 0,003 | 0,389 ± 0,002 | 0,220 ± 0,003 | 76,4 % |
+| NLGCL + filtre de risque | 0,053 ± 0,001 | 0,100 ± 0,001 | 0,366 ± 0,005 | 0 % |
+| NLGCL + filtre + MPT (λ = 0,25), servi | 0,051 ± 0,001 | 0,099 ± 0,001 | 0,356 ± 0,007 | 0 % |
 
-Les deux modèles appris battent nettement les références. Sur ce run, le terme contrastif de
-NLGCL ne gagne pas sur l'ablation LightGCN. Le filtre de risque fait chuter le NDCG brut,
-parce que beaucoup d'achats réels dépassent le plafond du client. En revanche, il est le
-meilleur sur les cibles compatibles avec ce plafond, c'est-à-dire ce qu'un conseil adapté
-peut retrouver.
+- Les deux modèles appris battent nettement les références, avec un écart entre graines bien plus petit que l'écart avec la popularité.
+- Le filtre de risque fait chuter le NDCG brut, parce que 80,8 % des achats réels du test dépassent le plafond de l'acheteur. Sur les cibles compatibles avec ce plafond, ce qu'un conseil adapté peut retrouver, il est le meilleur. Le MPT réduit en plus la variance simulée du portefeuille (−2,8·10⁻⁴ sur 1 969 clients) pour 4 % de NDCG.
+- Sur l'ensemble du test, le terme contrastif de NLGCL ne gagne pas sur l'ablation LightGCN (écart dans le bruit). Le réglage du poids et de la température sur la validation (`python -m src.train.tune_nlgcl`) choisit un poids de 0,01, mais le gain ne se retrouve pas sur le test (0,192 ± 0,005). Le contraste aide en revanche les 112 clients absents du graphe mais avec des actifs connus : 0,206 ± 0,010 contre 0,192 ± 0,007 pour LightGCN, sur chaque graine.
+- Profil en texte libre sur les 40 profils écrits par l'équipe (qwen2.5:7b) : macro-F1 de 0,34 (règles), 0,56 (actor) et 0,74 (actor + réflexion) en français ; 0,11, 0,67 et 0,81 en anglais.
 
 ## Réentraîner le modèle et reproduire les résultats
 
-`python -m src.train.run` réentraîne NLGCL et l'ablation LightGCN (environ 5 min sur CPU), puis écrit le modèle servi par l'API. `--skip-ablation` n'entraîne que NLGCL (environ 1 min 30 s), ce qui suffit pour la démo mais retire la ligne LightGCN des résultats. Les commandes suivantes relisent `dataset/experiment/model.npz` :
+`python -m src.train.run` réentraîne NLGCL et l'ablation LightGCN (environ 5 min sur CPU), puis écrit le modèle servi par l'API. `--skip-ablation` n'entraîne que NLGCL (environ 1 min 30 s), ce qui suffit pour la démo mais retire la ligne LightGCN des résultats. Les commandes suivantes relisent `dataset/experiment/model.npz` ou relancent l'expérience :
 
 | Commande | Résultat |
 |---|---|
+| `python -m src.train.run --seeds 42 1 2 3 4` | Même expérience sur cinq graines, moyenne et écart-type dans `dataset/experiment-multi/metrics.json`. Ne remplace pas le modèle servi |
+| `python -m src.train.tune_nlgcl --contrastive-weights 0.01 0.05 0.2 --temperatures 0.1 0.2 0.5` | Choisit le poids et la température du contraste sur la **validation** seulement (`nlgcl_tuning/validation_grid.csv`, `selected.json`) |
 | `python -m src.train.run --risk-tolerance 1` | Run complet, avec en plus l'ablation du filtre tolérant (une classe au-dessus du plafond, pénalisée) |
 | `python -m src.eval.tune` | Choisit λ et le rétrécissement de μ sur la **validation** (`tuning/validation_grid.csv`, `tuning/selected.json`). Les valeurs retenues sont les défauts de `src.train.run` |
 | `python -m src.eval.lambda_sweep` | Courbe pertinence / diversification sur le test pour chaque λ (`lambda_sweep/`) |
