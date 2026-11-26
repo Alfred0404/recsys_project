@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Complément</title>
-<link rel="icon" href="logo.svg" type="image/svg+xml">
+<title>Spread</title>
+<link rel="icon" href="logo.svg?v=spread" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
 <header class="top">
   <a class="brand" href="#">
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="14" width="4" height="7.5" rx="1" stroke="#f2f1ee" stroke-width="1.4"/><rect x="10" y="9" width="4" height="12.5" rx="1" fill="#b5502b"/><rect x="17.5" y="3.5" width="4" height="18" rx="1" stroke="#f2f1ee" stroke-width="1.4"/></svg>
+    <svg viewBox="0 0 100 100" aria-hidden="true"><g fill="#f4f4f5"><rect x="14" y="14" width="14" height="14" rx="4"/><rect x="38" y="14" width="14" height="14" rx="4"/><rect x="62" y="14" width="14" height="14" rx="4"/><rect x="14" y="38" width="14" height="14" rx="4"/><rect x="38" y="38" width="14" height="14" rx="4"/><rect x="62" y="38" width="14" height="14" rx="4"/><rect x="14" y="62" width="14" height="14" rx="4"/><rect x="38" y="62" width="14" height="14" rx="4"/></g><rect x="65" y="65" width="16" height="16" rx="4.6" fill="#2f6bff" transform="rotate(18 73 73)"/></svg>
     <span data-brand></span>
   </a>
   <nav class="nav-links">
@@ -25,6 +25,7 @@
 
 <main>
   <section class="hero">
+    <div class="lockup"><svg class="mark-anim" viewBox="0 0 100 100" aria-hidden="true"><g fill="#f4f4f5"><rect x="14" y="14" width="14" height="14" rx="4"/><rect x="38" y="14" width="14" height="14" rx="4"/><rect x="62" y="14" width="14" height="14" rx="4"/><rect x="14" y="38" width="14" height="14" rx="4"/><rect x="38" y="38" width="14" height="14" rx="4"/><rect x="62" y="38" width="14" height="14" rx="4"/><rect x="14" y="62" width="14" height="14" rx="4"/><rect x="38" y="62" width="14" height="14" rx="4"/></g><rect class="piece" x="65" y="65" width="16" height="16" rx="4.6"/></svg><span data-brand></span></div>
     <h1 data-i18n="hero"></h1>
     <p class="sub" data-i18n="hero_sub"></p>
     <div class="cta">
@@ -37,6 +38,31 @@
       </div>
       <div class="preview-rows" id="preview-rows"></div>
       <div class="preview-foot"><span data-i18n="preview_foot"></span><span>FAR-Trans · NLGCL</span></div>
+    </div>
+  </section>
+
+  <section class="how" id="how">
+    <h2 data-i18n="how_title"></h2>
+    <p class="lede" data-i18n="how_lede"></p>
+    <div class="how-line">
+      <div class="how-step">
+        <div class="how-dot">1</div>
+        <h3 data-i18n="s1_title"></h3>
+        <p data-i18n="s1_body"></p>
+        <button class="how-ex glass" type="button" id="how-try" data-i18n-label="how_try"><span id="how-typed"></span></button>
+      </div>
+      <div class="how-step">
+        <div class="how-dot">2</div>
+        <h3 data-i18n="s2_title"></h3>
+        <p data-i18n="s2_body"></p>
+        <div class="how-ex glass num" id="how-count"></div>
+      </div>
+      <div class="how-step">
+        <div class="how-dot">3</div>
+        <h3 data-i18n="s3_title"></h3>
+        <p data-i18n="s3_body"></p>
+        <a class="how-ex glass" id="how-asset" href="asset.html?isin=GRF000045002"><span id="how-spark"></span><span id="how-change" class="num"></span></a>
+      </div>
     </div>
   </section>
 
@@ -65,7 +91,11 @@
   <section class="results" id="results" hidden aria-live="polite"></section>
 </main>
 
-<footer class="site"><span data-brand></span> · Ethan Petain, Alfred De Vulpian, Nicolas Cottez-Abrate, Thomas Confolent · <a href="https://github.com/Alfred0404/recsys_project">GitHub</a></footer>
+<footer class="site big">
+  <div class="wordmark" data-brand aria-hidden="true"></div>
+  <p><span data-brand></span> · Ethan Petain, Alfred De Vulpian, Nicolas Cottez-Abrate, Thomas Confolent · <a href="https://github.com/Alfred0404/recsys_project">GitHub</a></p>
+</footer>
+<template id="loader"><svg class="mark-anim loop" viewBox="0 0 100 100" aria-hidden="true"><g fill="#f4f4f5"><rect x="14" y="14" width="14" height="14" rx="4"/><rect x="38" y="14" width="14" height="14" rx="4"/><rect x="62" y="14" width="14" height="14" rx="4"/><rect x="14" y="38" width="14" height="14" rx="4"/><rect x="38" y="38" width="14" height="14" rx="4"/><rect x="62" y="38" width="14" height="14" rx="4"/><rect x="14" y="62" width="14" height="14" rx="4"/><rect x="38" y="62" width="14" height="14" rx="4"/></g><rect class="piece" x="65" y="65" width="16" height="16" rx="4.6"/></svg></template>
 
 <script src="i18n.js"></script>
 <script src="chart.js"></script>

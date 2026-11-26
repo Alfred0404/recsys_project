@@ -4,7 +4,21 @@ Projet d'équipe : recommandation d'actifs par GNN (NLGCL), re-ranking selon la 
 
 **Équipe** : Ethan Petain (Project Lead), Alfred De Vulpian (Data Engineer), Nicolas Cottez-Abrate (Lead ML Engineer), Thomas Confolent (ML Engineer Ops).
 
-## Reproduire l'expérience et lancer la démo
+## Lancement rapide
+
+Avec Python 3.11 ou plus récent installé, une seule commande depuis le dossier du dépôt :
+
+```bash
+run.bat        # Windows (double-clic possible)
+./run.sh       # macOS / Linux
+```
+
+Le script crée l'environnement `.venv`, installe les dépendances, télécharge FAR-Trans,
+prépare les données et entraîne le modèle s'ils manquent (quelques minutes la première
+fois), puis lance le serveur et ouvre http://127.0.0.1:8000. Les lancements suivants
+démarrent en quelques secondes. `Ctrl+C` arrête le serveur.
+
+## Reproduire l'expérience et lancer la démo pas à pas
 
 Depuis le dossier du dépôt, avec Python 3.11 ou plus récent :
 

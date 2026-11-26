@@ -1,0 +1,110 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>scenes</title>
+<link rel="stylesheet" href="../web/styles.css">
+<style>
+html,body{width:1280px;height:720px;overflow:hidden}
+.s{position:absolute;inset:0;display:none}
+.s.on{display:block}
+.t{position:absolute;left:0;right:0;top:64px;text-align:center;margin:0;font-weight:600;letter-spacing:-.035em;font-size:52px;line-height:1.1;
+ background:linear-gradient(180deg,#fff 30%,rgba(255,255,255,.6));-webkit-background-clip:text;background-clip:text;color:transparent}
+.cap{position:absolute;left:0;right:0;bottom:58px;text-align:center;font-size:30px;font-weight:500;letter-spacing:-.01em;opacity:0;transition:opacity .6s}
+.cap.show{opacity:1}
+.cap b{color:#5b8aff;font-weight:600}
+svg.f{position:absolute;inset:0;width:1280px;height:720px}
+svg text{fill:var(--paper);font-family:var(--sans)}
+.fade{opacity:0;transition:opacity .7s}.fade.show{opacity:1}
+.card{position:absolute;top:170px;width:500px;height:360px;border-radius:18px;padding:26px 30px}
+.card h3{margin:0;font-weight:600;font-size:22px;letter-spacing:-.02em}
+.card p{margin:2px 0 0;color:var(--muted);font-size:15px}
+.card svg{position:absolute;left:30px;top:90px;width:440px;height:200px;overflow:visible}
+.line{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 3.6s ease-in-out}
+.line.go{stroke-dashoffset:0}
+.big{position:absolute;right:30px;bottom:22px;font-size:46px;font-weight:600;letter-spacing:-.04em}
+.tag{position:absolute;left:30px;bottom:34px;color:var(--muted);font-size:14px}
+.e{stroke:rgba(255,255,255,.16);stroke-width:1.4;opacity:0;transition:all .6s}
+.e.show{opacity:1}.e.hot{stroke:var(--accent);stroke-width:2.6;opacity:1;filter:drop-shadow(0 0 6px rgba(47,107,255,.7))}.e.dim{opacity:.07}
+.p{opacity:0;transition:opacity .6s}.p.show{opacity:1}
+.p circle.o{fill:rgba(255,255,255,.04);stroke:rgba(255,255,255,.28);stroke-width:1.6;transition:all .6s}
+.p .h{fill:none;stroke:rgba(255,255,255,.4);stroke-width:1.4}
+.p.hot circle.o{stroke:var(--accent);fill:rgba(47,107,255,.15)}
+.a{opacity:0;transition:opacity .6s}.a.show{opacity:1}
+.a rect{fill:rgba(255,255,255,.1);stroke:rgba(255,255,255,.2);stroke-width:1.2;transition:all .6s}
+.a.hot rect{fill:var(--accent);stroke:var(--accent);filter:drop-shadow(0 0 14px rgba(47,107,255,.7))}
+.a.dim{opacity:.22}
+.a.out rect{fill:none;stroke:rgba(255,255,255,.3);stroke-dasharray:5 4}.a.out{opacity:.5}
+.badge{opacity:0;transition:opacity .6s}.badge.show{opacity:1}
+.badge circle{fill:#f4f4f5}.badge text{fill:#000;font-size:20px;font-weight:700}
+#s4 .hero{min-height:720px;padding:0;align-content:center}
+#s4 .lockup{font-size:92px;margin-bottom:26px;gap:26px}
+#s4 .lockup svg{width:116px;height:116px}
+#s4 .hero h1{font-size:92px}
+#s4 .team{margin-top:46px;color:var(--muted);font-size:16px}
+</style>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="s" id="s1">
+ <h1 class="t">Tous vos œufs dans le même panier ?</h1>
+ <div class="card glass" style="left:100px">
+  <h3>Un seul actif</h3><p>portefeuille concentré</p>
+  <svg viewBox="0 0 440 200"><line x1="0" y1="200" x2="440" y2="200" stroke="rgba(255,255,255,.12)"/>
+   <path class="line" id="l1" pathLength="1" stroke="#ff5d52" d="M0,60 L44,50 L88,68 L132,40 L176,55 L220,30 L264,50 L304,150 L346,185 L392,170 L440,196"/></svg>
+  <span class="tag fade" id="m1">le marché chute</span>
+  <span class="big down fade num" id="t1">−38 %</span>
+ </div>
+ <div class="card glass" style="left:680px">
+  <h3>Plusieurs actifs</h3><p>portefeuille diversifié</p>
+  <svg viewBox="0 0 440 200"><line x1="0" y1="200" x2="440" y2="200" stroke="rgba(255,255,255,.12)"/>
+   <path class="line" id="l2" pathLength="1" stroke="#3fd492" d="M0,90 L44,84 L88,88 L132,70 L176,76 L220,62 L264,70 L304,100 L346,110 L392,98 L440,104"/></svg>
+  <span class="tag fade" id="m2">le marché chute</span>
+  <span class="big up fade num" id="t2">−9 %</span>
+ </div>
+ <div class="cap" id="c1"></div>
+</div>
+
+<div class="s" id="s3">
+ <h1 class="t">Comment Spread choisit ses suggestions</h1>
+ <svg class="f" viewBox="0 0 1280 720" id="g"></svg>
+ <div class="cap" id="c3"></div>
+</div>
+
+<div class="s" id="s4">
+ <section class="hero">
+  <div class="lockup"><svg class="mark-anim" viewBox="0 0 100 100"><g fill="#f4f4f5"><rect x="14" y="14" width="14" height="14" rx="4"/><rect x="38" y="14" width="14" height="14" rx="4"/><rect x="62" y="14" width="14" height="14" rx="4"/><rect x="14" y="38" width="14" height="14" rx="4"/><rect x="38" y="38" width="14" height="14" rx="4"/><rect x="62" y="38" width="14" height="14" rx="4"/><rect x="14" y="62" width="14" height="14" rx="4"/><rect x="38" y="62" width="14" height="14" rx="4"/></g><rect class="piece" x="65" y="65" width="16" height="16" rx="4.6"/></svg><span>Spread</span></div>
+  <h1>Diversifier, avec raison.</h1>
+  <div class="team">Ethan Petain · Alfred De Vulpian · Nicolas Cottez-Abrate · Thomas Confolent</div>
+ </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id), S=new URLSearchParams(location.search).get('s');
+$('s'+S).classList.add('on');
+const at=(ms,f)=>setTimeout(f,ms);
+const cap=(id,h)=>{const c=$(id);c.classList.remove('show');setTimeout(()=>{c.innerHTML=h;c.classList.add('show')},650)};
+if(S==='1'){
+ at(300,()=>cap('c1','Beaucoup d’investisseurs ne détiennent que <b>quelques actifs</b>.'));
+ at(3800,()=>{$('l1').classList.add('go');$('l2').classList.add('go');at(1000,()=>{$('m1').classList.add('show');$('m2').classList.add('show')});});
+ at(7800,()=>{$('t1').classList.add('show');$('t2').classList.add('show')});
+ at(8600,()=>cap('c1','Diversifier protège. Mais <b>quoi ajouter</b> à son portefeuille ?'));
+}
+if(S==='3'){
+ const A='ABCDEF';
+ const E={0:'A',1:'ABC',2:'AB',3:'DE',4:'AF',5:'EF'};
+ const px=330,ax=950,py=i=>190+i*72,ay=i=>190+i*72;
+ let h='';
+ for(const [p,s] of Object.entries(E))for(const a of s)h+=`<line class="e" data-p="${p}" data-a="${a}" x1="${px+26}" y1="${py(p)}" x2="${ax-30}" y2="${ay(A.indexOf(a))}"/>`;
+ for(let i=0;i<6;i++)h+=`<g class="p" id="p${i}"><circle class="o" cx="${px}" cy="${py(i)}" r="24"/><circle class="h" cx="${px}" cy="${py(i)-6}" r="5"/><path class="h" d="M${px-10} ${py(i)+12} q10 -14 20 0"/>${i?'':`<text x="${px-44}" y="${py(i)+6}" text-anchor="end" font-size="22" font-weight="600" style="fill:#5b8aff">Vous</text>`}</g>`;
+ for(let i=0;i<6;i++)h+=`<g class="a" id="a${A[i]}"><rect x="${ax-30}" y="${ay(i)-24}" width="60" height="48" rx="12"/><text x="${ax}" y="${ay(i)+8}" text-anchor="middle" font-size="22" font-weight="600">${A[i]}</text></g>`;
+ for(const a of 'BC')h+=`<g class="badge" id="b${a}"><circle cx="${ax+56}" cy="${ay(A.indexOf(a))}" r="17"/><text x="${ax+56}" y="${ay(A.indexOf(a))+7}" text-anchor="middle">${a==='B'?1:2}</text></g>`;
+ h+=`<text class="fade" id="rk" x="${ax+50}" y="${ay(5)+7}" font-size="19" style="fill:#8b8b93">risque trop élevé</text>`;
+ $('g').innerHTML=h;
+ const q=s=>[...document.querySelectorAll(s)], on=(s,c)=>q(s).forEach(e=>e.classList.add(c)), off=(s,c)=>q(s).forEach(e=>e.classList.remove(c));
+ at(300,()=>cap('c3','Le modèle apprend <b>qui détient quoi</b>, chez des milliers d’investisseurs.'));
+ at(700,()=>{for(let i=1;i<6;i++)at(i*250,()=>$('p'+i).classList.add('show'));A.split('').forEach((a,i)=>at(i*200,()=>$('a'+a).classList.add('show')))});
+ at(2000,()=>on('.e:not([data-p="0"])','show'));
+ at(4600,()=>{$('p0').classList.add('show','hot');on('.e[data-p="0"]','show');on('.e[data-p="0"]','hot');$('aA').classList.add('hot');cap('c3','Vous détenez l’actif <b>A</b>.')});
+ at(6600,()=>{cap('c3','Ceux qui détiennent <b>A</b> détiennent souvent… <b>autre chose</b>.');['1','2','4'].forEach(p=>$('p'+p).classList.add('hot'));on('.e:not([data-p="0"])','dim');['1','2','4'].forEach(p=>{off(`.e[data-p="${p}"]`,'dim');on(`.e[data-p="${p}"]`,'hot')});'DE'.split('').forEach(a=>$('a'+a).classList.add('dim'));['B','C','F'].forEach(a=>$('a'+a).classList.add('hot'))});
+ at(10200,()=>{cap('c3','On écarte ce qui dépasse <b>votre tolérance au risque</b>.');$('aF').classList.remove('hot');$('aF').classList.add('out');on('.e[data-a="F"]','dim');off('.e[data-a="F"]','hot');$('rk').classList.add('show')});
+ at(13400,()=>{cap('c3','Puis on classe en premier ce qui <b>diversifie le plus</b> votre portefeuille.');$('bB').classList.add('show');setTimeout(()=>$('bC').classList.add('show'),500)});
+}
+</script></body></html>

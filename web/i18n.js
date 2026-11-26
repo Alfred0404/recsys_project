@@ -1,9 +1,15 @@
 // Brand name: change it here only, it updates every page.
-const BRAND = "Complément";
+const BRAND = "Spread";
 
 const STRINGS = {
   fr: {
     hero: "Diversifier, avec raison.",
+    how_title: "Comment ça marche", how_lede: "Trois étapes, moins d’une minute.",
+    s1_title: "Décrivez", s1_body: "Ce que vous détenez et ce que vous cherchez, en une phrase.",
+    s2_title: "Spread analyse", s2_body: "Pertinence par le graphe, filtre selon votre risque, priorité à la diversification.",
+    s3_title: "Explorez", s3_body: "Risque, évolution du cours, et la raison de chaque suggestion.",
+    how_ex1: "J’ai National Bank of Greece, je veux diversifier", how_try: "Essayer cet exemple",
+    how_ex2: "{a} actifs → {b} suggestions", how_ex3: "sur 3 ans · risque {r}/7",
     nav_search: "Recherche", nav_assets: "Actifs",
     catalog_title: "Tous les actifs", catalog_lede: "{n} actions, obligations et fonds du catalogue FAR-Trans. Cliquez sur un actif pour voir son cours.",
     catalog_search: "Rechercher un actif par nom ou ISIN", filter_all: "Tous",
@@ -13,10 +19,10 @@ const STRINGS = {
     cta_try: "Essayer maintenant",
     preview_query: "J’ai National Bank of Greece, je veux diversifier",
     preview_foot: "Suggestions réelles du modèle, cours sur 3 ans",
-    ask_title: "Que détenez-vous, et que cherchez-vous ?",
+    ask_title: "Demandez à Spread",
     placeholder: "Décrivez votre portefeuille et ce que vous voulez…",
     search_label: "Décrivez votre portefeuille et ce que vous voulez",
-    go: "Recommander", busy: "Recherche…",
+    go: "Recommander", busy: "Analyse…",
     hint: "Citez vos actifs (ex. National Bank of Greece) : ils s’ajoutent au portefeuille. Sans actif, les suggestions partent des plus détenus.",
     options: "Options : horizon, objectif, réaction aux baisses",
     chart_years: "Période des courbes", years: "{n} an", years_plural: "{n} ans",
@@ -50,6 +56,12 @@ const STRINGS = {
   },
   en: {
     hero: "Diversify, with reason.",
+    how_title: "How it works", how_lede: "Three steps, under a minute.",
+    s1_title: "Describe", s1_body: "What you hold and what you are after, in one sentence.",
+    s2_title: "Spread analyses", s2_body: "Relevance from the graph, a filter for your risk, priority to diversification.",
+    s3_title: "Explore", s3_body: "Risk, price history, and the reason behind each suggestion.",
+    how_ex1: "I hold National Bank of Greece, I want to diversify", how_try: "Try this example",
+    how_ex2: "{a} assets → {b} suggestions", how_ex3: "over 3 years · risk {r}/7",
     nav_search: "Search", nav_assets: "Assets",
     catalog_title: "All assets", catalog_lede: "{n} stocks, bonds and funds from the FAR-Trans catalogue. Click an asset to see its price.",
     catalog_search: "Search an asset by name or ISIN", filter_all: "All",
@@ -59,10 +71,10 @@ const STRINGS = {
     cta_try: "Try it now",
     preview_query: "I hold National Bank of Greece, I want to diversify",
     preview_foot: "Real model suggestions, 3-year prices",
-    ask_title: "What do you hold, and what are you after?",
+    ask_title: "Ask Spread",
     placeholder: "Describe your portfolio and what you want…",
     search_label: "Describe your portfolio and what you want",
-    go: "Recommend", busy: "Searching…",
+    go: "Recommend", busy: "Analysing…",
     hint: "Name your assets (e.g. National Bank of Greece): they are added to the portfolio. With none, suggestions start from the most held.",
     options: "Options: horizon, goal, reaction to drops",
     chart_years: "Chart period", years: "{n} year", years_plural: "{n} years",

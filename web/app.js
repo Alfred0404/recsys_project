@@ -106,7 +106,7 @@ async function submit(event) {
 
   const go = document.getElementById("go");
   const error = document.getElementById("error");
-  go.disabled = true; go.textContent = t("busy"); error.hidden = true;
+  go.disabled = true; go.replaceChildren(document.getElementById("loader").content.cloneNode(true), t("busy")); error.hidden = true;
   try {
     let result = await api("recommend", payload);
     let review = null;
@@ -192,6 +192,75 @@ async function renderPreview() {
   } catch (_) { box.closest(".preview").hidden = true; }
 }
 
+/* ---------- How it works: one sequence when the section comes into view ---------- */
+
+const HOW_ASSET = "GRF000045002";  // real example: DHLOS Synthesis fund, shown with its real 3-year trend
+const how = { played: false, change: null, risk: 5 };
+
+function countTo(node, from, to, ms, render) {
+  const start = performance.now();
+  node.textContent = render(from);
+  const tick = (now) => {
+    const k = Math.min(1, (now - start) / ms);
+    node.textContent = render(from + (to - from) * (1 - (1 - k) ** 3));
+    if (k < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function howFinal() {  // static end state: reduced motion, language change, or already played
+  document.getElementById("how-typed").textContent = `« ${t("how_ex1")} »`;
+  document.getElementById("how-count").textContent = t("how_ex2", { a: state.catalog.length || 288, b: 10 });
+  if (how.change !== null) document.getElementById("how-change").textContent = `${pct(how.change)} ${t("how_ex3", { r: how.risk })}`;
+  document.getElementById("how-spark").classList.add("drawn");
+  document.querySelectorAll(".how-step").forEach((step) => step.classList.add("on"));
+  document.getElementById("how").classList.add("play");
+}
+
+function playHow() {
+  if (how.played) return;
+  how.played = true;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { howFinal(); return; }
+  const steps = document.querySelectorAll(".how-step");
+  document.getElementById("how").classList.add("play");
+  steps[0].classList.add("on");
+  const text = `« ${t("how_ex1")} »`;
+  const typed = document.getElementById("how-typed");
+  [...text].forEach((_, i) => setTimeout(() => { typed.textContent = text.slice(0, i + 1); }, 300 + i * 28));
+  setTimeout(() => {
+    steps[1].classList.add("on");
+    const total = state.catalog.length || 288;
+    countTo(document.getElementById("how-count"), total, 10, 1200, (v) => t("how_ex2", { a: total, b: Math.round(v) }));
+  }, 800);
+  setTimeout(() => {
+    steps[2].classList.add("on");
+    document.getElementById("how-spark").classList.add("drawn");
+    if (how.change !== null) {
+      countTo(document.getElementById("how-change"), 0, how.change, 1200, (v) => `${pct(v)} ${t("how_ex3", { r: how.risk })}`);
+    }
+  }, 1600);
+}
+
+async function setupHow() {
+  document.getElementById("how-try").addEventListener("click", () => {  // step 1 starts the live demo
+    const input = document.getElementById("query");
+    input.value = t("how_ex1");
+    document.getElementById("ask").scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus({ preventScroll: true });
+  });
+  try {
+    const series = (await api(`prices?isins=${HOW_ASSET}&years=3`))[HOW_ASSET];
+    how.change = series.change;
+    const spark = sparkline(series.points, series.change >= 0);
+    spark.lastChild.setAttribute("pathLength", "1");
+    document.getElementById("how-spark").replaceChildren(spark);
+    how.risk = state.catalog.find((a) => a.isin === HOW_ASSET)?.risk_class ?? how.risk;
+  } catch (_) { /* no price history: the step keeps its text only */ }
+  new IntersectionObserver((entries, observer) => {
+    if (entries.some((e) => e.isIntersecting)) { playHow(); observer.disconnect(); }
+  }, { threshold: 0.4 }).observe(document.getElementById("how"));
+}
+
 /* ---------- Start ---------- */
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -229,10 +298,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const error = document.getElementById("error");
     error.textContent = t("err_api"); error.hidden = false;
   }
+  setupHow();
   if (location.hash === "#results" && (state.view = load(LAST_RESULT))) {  // back from an asset page
     renderResults();
     document.getElementById("results").scrollIntoView({ block: "start" });
   }
 });
 
-document.addEventListener("langchange", () => { renderOptions(); renderChips(); renderResults(); });
+document.addEventListener("langchange", () => { renderOptions(); renderChips(); renderResults(); if (how.played) howFinal(); });
