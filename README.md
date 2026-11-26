@@ -1,43 +1,66 @@
-# Spread by Masdaq : recommandation financière (FAR-Trans, NLGCL + MPT)
+# Spread by Masdaq: financial recommendation (FAR-Trans, NLGCL + MPT)
 
-Spread propose à un investisseur particulier les actifs qui complètent son portefeuille au lieu de le dupliquer : un GNN (NLGCL) apprend sur de vrais achats quels actifs vont ensemble, un filtre retire tout ce qui dépasse le plafond de risque de l'investisseur, puis un re-ranking selon la théorie moderne du portefeuille (MPT) place en tête les actifs qui réduisent la variance. Un LLM local fixe le profil à partir d'une phrase libre et explique chaque suggestion, chiffres vérifiés. Outil pédagogique, pas un conseil en investissement.
+Spread suggests to a retail investor the assets that complement their portfolio instead of duplicating it. A GNN (NLGCL) learns from real purchases which assets go together, a filter removes everything above the investor's risk ceiling, then a modern portfolio theory (MPT) re-ranking puts the assets that reduce variance first. A local LLM sets the profile from a free-text sentence and explains each suggestion, with verified figures. Educational tool, not investment advice.
 
-Le **[rapport final](docs/Finance_Recommendation_Final_Report.pdf)** (3 pages) résume la méthode et les résultats. Le plan, l'architecture et les rapports d'étape sont dans [docs/](docs/).
+The **[final report](docs/Finance_Recommendation_Final_Report.pdf)** (3 pages) summarizes the method and the results. The plan, the architecture and the progress reports are in [docs/](docs/).
 
-**Équipe** : Ethan Petain (Project Lead), Alfred De Vulpian (Data Engineer), Nicolas Cottez-Abrate (Lead ML Engineer), Thomas Confolent (ML Engineer Ops).
+**Team**: Ethan Petain (Project Lead), Alfred De Vulpian (Data Engineer), Nicolas Cottez-Abrate (Lead ML Engineer), Thomas Confolent (ML Engineer Ops).
 
-## Lancement rapide
+## Quick start
 
-Avec Python 3.11 ou plus récent et Git installés :
+Requirements: **Python 3.11 or newer** (python.org; tick "Add Python to PATH" on Windows) and an
+internet connection for the first run (downloading the dependencies and the FAR-Trans dataset).
+Git is not needed.
 
-```bash
-git clone https://github.com/Alfred0404/recsys_project.git
-cd recsys_project
-run.bat        # Windows (double-clic possible)
-./run.sh       # macOS / Linux
-```
+1. Unzip the `.zip` and open a terminal in the resulting folder (the one containing `run.sh`).
+2. Install everything (environment, dependencies, data, model), about 5 to 6 min:
 
-Le script crée `.venv`, installe les dépendances, télécharge FAR-Trans, prépare les données
-et entraîne le modèle servi s'ils manquent, puis lance le serveur et ouvre http://127.0.0.1:8000.
-Il entraîne seulement NLGCL (`--skip-ablation`) : la démo n'a pas besoin de l'ablation LightGCN.
-Temps mesuré sur un portable sous Windows : 6 min 24 s du clone au serveur lancé avec l'ancienne
-procédure complète, dont 1 min 29 s d'entraînement sans l'ablation. Les lancements suivants
-démarrent en quelques secondes. `Ctrl+C` arrête le serveur.
+   | Windows | macOS / Linux |
+   |---|---|
+   | `install.bat` (double-click works) | `bash install.sh` |
 
-## Reproduire l'expérience et lancer la démo
+3. Start the site:
 
-Avec Python 3.11 ou plus récent.
+   | Windows | macOS / Linux |
+   |---|---|
+   | `run.bat` (double-click works) | `bash run.sh` |
 
-0. Clonez le dépôt : `git clone https://github.com/Alfred0404/recsys_project.git` puis `cd recsys_project`.
+   The browser opens on http://127.0.0.1:8000. `Ctrl+C` stops the server.
 
-1. Créez et activez l'environnement :
+If the `.zip` already contains `dataset/experiment/` (trained weights) and `dataset/processed/`
+(prepared prices), as in the delivered archive, the install only creates the environment and
+installs the dependencies: nothing is downloaded and the model is **not retrained**, so it takes
+about 1 to 2 min. Delete `dataset/experiment/` to force a retraining.
+
+Step 2 is optional: `run.bat` / `run.sh` perform the same installation if anything is missing,
+then start the server. If [uv](https://docs.astral.sh/uv/) is installed, the scripts use it and
+the dependencies install much faster.
+
+The scripts create `.venv`, install the dependencies, download FAR-Trans, prepare the data
+and train the served model if they are missing, then start the server.
+They only train NLGCL (`--skip-ablation`): the demo does not need the LightGCN ablation.
+Time measured on a Windows laptop: 6 min 24 s from clone to running server with the old full
+procedure, including 1 min 29 s of training without the ablation. Later launches
+start in a few seconds.
+
+If something goes wrong: "Python not found" means Python 3.11+ is not installed or not on the
+PATH; on Linux, `python3 -m venv` may require `sudo apt install python3-venv`.
+
+## Reproduce the experiment and run the demo
+
+Requires Python 3.11 or newer.
+
+0. Go to the project folder (unzipped from the `.zip`, or cloned with
+   `git clone https://github.com/Alfred0404/recsys_project.git`).
+
+1. Create and activate the environment:
 
    | macOS / Linux | Windows (PowerShell) |
    |---|---|
    | `python3 -m venv .venv` | `python -m venv .venv` |
    | `source .venv/bin/activate` | `.\.venv\Scripts\Activate.ps1` |
 
-2. Installez, préparez les données et entraînez (environ 5 min sur CPU) :
+2. Install, prepare the data and train (about 5 min on CPU):
 
    ```bash
    python -m pip install -r requirements.txt
@@ -46,14 +69,14 @@ Avec Python 3.11 ou plus récent.
    python -m src.train.run
    ```
 
-   Sous Linux, installez d'abord la version CPU de torch, sinon pip télécharge la version CUDA
-   (environ 2,5 Go) : `python -m pip install "torch>=2.2,<3" --index-url https://download.pytorch.org/whl/cpu`.
-   `run.sh` le fait tout seul.
+   On Linux, first install the CPU build of torch, otherwise pip downloads the CUDA build
+   (about 2.5 GB): `python -m pip install "torch>=2.2,<3" --index-url https://download.pytorch.org/whl/cpu`.
+   `run.sh` does this automatically.
 
-3. Lancez le serveur (voir plus bas) et ouvrez http://127.0.0.1:8000.
+3. Start the server (see below) and open http://127.0.0.1:8000.
 
-Pour lancer les tests, installez aussi les outils de test. Les tests n'ont besoin ni des
-données ni du modèle. Le test des pages web demande Node.js 18 ou plus récent :
+To run the tests, also install the test tools. The tests need neither the data nor the model.
+The web pages test requires Node.js 18 or newer:
 
 ```bash
 python -m pip install -r requirements-dev.txt
@@ -61,238 +84,238 @@ python -m pytest
 node --test tests/test_asset_pages.cjs
 ```
 
-La CI GitHub ([.github/workflows/tests.yml](.github/workflows/tests.yml)) lance ces deux commandes sur chaque PR.
+The GitHub CI ([.github/workflows/tests.yml](.github/workflows/tests.yml)) runs these two commands on every PR.
 
-Le téléchargement FAR-Trans vient de l'[Université de Glasgow](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0).
-Les données et les artefacts générés restent sous `dataset/`. Le run écrit
-`loss.csv`, `metrics.json`, `checkpoint.pt`, `model.npz` et un snapshot financier
-dans `dataset/experiment/`. Le graphe utilise uniquement les achats d'entraînement.
-Le checkpoint est choisi sur la validation, puis les modèles et références sont
-comparés sur les mêmes utilisateurs et le même catalogue de test.
+The FAR-Trans download comes from the [University of Glasgow](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0).
+Data and generated artifacts stay under `dataset/`. The run writes
+`loss.csv`, `metrics.json`, `checkpoint.pt`, `model.npz` and a financial snapshot
+in `dataset/experiment/`. The graph only uses training purchases.
+The checkpoint is chosen on validation, then the models and baselines are
+compared on the same users and the same test catalog.
 
-Lancez le serveur avec l'environnement activé :
+Start the server with the environment activated:
 
 ```bash
 python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Ouvrez http://127.0.0.1:8000. Sélectionnez les actifs détenus par nom ou ISIN et
-ajustez leurs montants. Choisissez le questionnaire ou le profil en texte libre.
-En mode texte, le premier classement utilise un profil prudent. Le bouton
-**Analyser le texte et actualiser** lance l'analyse puis recalcule les suggestions.
-Ouvrez une fiche pour consulter les cours disponibles et demander une explication.
-Les courbes utilisent `dataset/processed/close_prices.parquet`, produit par
-`load_and_check`. Le site (`web/`) est servi par la même API, sans étape de
-build ni connexion internet. Pour la montrer depuis un autre appareil du même réseau,
-lancez avec `--host 0.0.0.0` et ouvrez `http://<IP de la machine>:8000`.
+Open http://127.0.0.1:8000. Select the held assets by name or ISIN and
+adjust their amounts. Choose the questionnaire or the free-text profile.
+In text mode, the first ranking uses a cautious profile. The
+**Review text and refresh** button runs the analysis then recomputes the suggestions.
+Open an asset page to see the available prices and request an explanation.
+The charts use `dataset/processed/close_prices.parquet`, produced by
+`load_and_check`. The site (`web/`) is served by the same API, with no build step
+and no internet connection. To show it from another device on the same network,
+start with `--host 0.0.0.0` and open `http://<machine IP>:8000`.
 
-Le serveur charge les embeddings du run et les tables financières datées au démarrage.
-Le catalogue d'expérimentation est historique. La démo sert à observer les compromis du classement.
+The server loads the run's embeddings and the dated financial tables at startup.
+The experiment catalog is historical. The demo is for observing the trade-offs of the ranking.
 
-Avec un portefeuille connu, l'API moyenne les embeddings des actifs
-détenus en les pondérant par montant. Le questionnaire fixe le plafond de risque.
-Quand les prix nécessaires sont disponibles, les candidats sont reclassés en
-simulant une allocation de 10 % au nouvel actif. L'ordre de la réponse correspond
-au classement final. Le champ `score` mesure la pertinence issue du modèle.
-Les actions de la démo sont journalisées dans `dataset/interactions.sqlite3`
-(`python -m src.storage.export` les exporte en CSV).
+With a known portfolio, the API averages the embeddings of the held assets,
+weighted by amount. The questionnaire sets the risk ceiling.
+When the required prices are available, the candidates are re-ranked by
+simulating a 10 % allocation to the new asset. The order of the response
+matches the final ranking. The `score` field measures the relevance coming from the model.
+Demo actions are logged in `dataset/interactions.sqlite3`
+(`python -m src.storage.export` exports them to CSV).
 
-La section **Et si vous ajoutiez un ETF PEA ?** de la page d'accueil compare l'exposition
-par pays d'un portefeuille d'ETF PEA avant et après l'ajout d'un ETF (19 ETF éligibles, données
-justETF). Elle ne dépend pas du modèle.
+The **What if you added a PEA ETF?** section of the home page compares the country
+exposure of a PEA ETF portfolio before and after adding an ETF (19 eligible ETFs, justETF
+data). It does not depend on the model.
 
-### Vérification facultative du profil
+### Optional profile verification
 
-Avec un modèle Ollama déjà lancé, définissez `RECSYS_OLLAMA_MODEL` avant de
-démarrer l'API. Pour un serveur local compatible avec l'API Chat Completions,
-définissez `RECSYS_OPENAI_COMPAT_URL` (URL complète du point d'accès) et
-`RECSYS_PROFILE_MODEL`. L'écran propose alors la vérification du profil.
-Les valeurs affichées restent validées par les règles du questionnaire. La
-vérification LLM s'exécute à la demande, séparément de `/recommend`.
+With an Ollama model already running, set `RECSYS_OLLAMA_MODEL` before
+starting the API. For a local server compatible with the Chat Completions API,
+set `RECSYS_OPENAI_COMPAT_URL` (full endpoint URL) and
+`RECSYS_PROFILE_MODEL`. The screen then offers the profile verification.
+The displayed values remain validated by the questionnaire rules. The LLM
+verification runs on demand, separately from `/recommend`.
 
 ```bash
 python -m src.llm.profile_benchmark
 ```
 
-Ce test compare la première réponse du modèle et le profil vérifié sur neuf cas
-synthétiques. Le [rapport final](docs/Finance_Recommendation_Final_Report.pdf)
-contient les mesures de l'expérience et de la démo.
+This test compares the model's first answer and the verified profile on nine
+synthetic cases. The [final report](docs/Finance_Recommendation_Final_Report.pdf)
+contains the measurements of the experiment and of the demo.
 
 ## Architecture
 
 ```
-FAR-Trans (CSV) ─► src/data : parquet typés, portefeuilles, μ, Σ, classes de risque 1 à 7
+FAR-Trans (CSV) ─► src/data : typed parquet, portfolios, μ, Σ, risk classes 1 to 7
                         │
                         ▼
-      src/eval/split : split temporel 70/15/15 (achats seulement)
+      src/eval/split : 70/15/15 temporal split (purchases only)
                         │ train
                         ▼
-      src/graph : graphe biparti client-actif ─► src/models : NLGCL (LightGCN + contraste entre couches)
+      src/graph : bipartite client-asset graph ─► src/models : NLGCL (LightGCN + inter-layer contrast)
                                                         │ embeddings (model.npz)
                                                         ▼
-questionnaire / texte ─► src/llm : profil (plafond, γ) ─► src/serve : score des embeddings
-                                                        ─► src/rerank : filtre de risque puis MPT (λ)
+questionnaire / text ─► src/llm : profile (ceiling, γ) ─► src/serve : embedding scores
+                                                        ─► src/rerank : risk filter then MPT (λ)
                                                         │
                                                         ▼
-                         src/api (FastAPI) ◄──► web/ (site statique)  ─► dataset/interactions.sqlite3
+                         src/api (FastAPI) ◄──► web/ (static site)  ─► dataset/interactions.sqlite3
 ```
 
 **Endpoints** (`src/api/main.py`)
 
-| Route | Rôle |
+| Route | Role |
 |---|---|
-| `GET /health` | État du serveur et taille du catalogue |
-| `GET /assets` | Catalogue servi : ISIN, nom, catégorie, classe de risque, rang de popularité |
-| `POST /recommend` | `{holdings, answers, free_text, session_id}` → classement final, profil, `recommendation_id`. N'appelle jamais le LLM |
-| `POST /profile` | Vérification du profil par le LLM local, ou par les règles s'il n'y en a pas ; résultat mis en cache pour la session |
-| `POST /explain` | Explication d'un actif d'une recommandation déjà servie, vérifiée contre les chiffres du classement |
-| `POST /log_interaction` | Journalise un événement anonyme de la démo dans SQLite |
-| `GET /prices?isins=…&years=3` | Cours hebdomadaires et variation sur la période |
-| `GET /asset/{isin}` | Historique quotidien et description d'un actif |
-| `GET /pea/etfs` | Les 19 ETF éligibles au PEA de la vue d'exposition |
-| `POST /pea/exposure` | `{holdings, candidate, share}` → exposition par pays avant et après l'ajout |
+| `GET /health` | Server state and catalog size |
+| `GET /assets` | Served catalog: ISIN, name, category, risk class, popularity rank |
+| `POST /recommend` | `{holdings, answers, free_text, session_id}` → final ranking, profile, `recommendation_id`. Never calls the LLM |
+| `POST /profile` | Profile verification by the local LLM, or by the rules if there is none; result cached for the session |
+| `POST /explain` | Explanation of one asset of an already served recommendation, checked against the ranking's figures |
+| `POST /log_interaction` | Logs an anonymous demo event in SQLite |
+| `GET /prices?isins=…&years=3` | Weekly prices and change over the period |
+| `GET /asset/{isin}` | Daily history and description of an asset |
+| `GET /pea/etfs` | The 19 PEA-eligible ETFs of the exposure view |
+| `POST /pea/exposure` | `{holdings, candidate, share}` → country exposure before and after the addition |
 
-**Variables d'environnement** (toutes facultatives)
+**Environment variables** (all optional)
 
-| Variable | Défaut | Rôle |
+| Variable | Default | Role |
 |---|---|---|
-| `RECSYS_MODEL_PATH` | `dataset/experiment/model.npz` | Modèle servi |
-| `RECSYS_FINANCE_DIR` | `dataset/experiment/finance` | Snapshot μ, Σ, risque |
-| `RECSYS_DATA_DIR` | `dataset/processed` | Cours affichés sur les fiches |
-| `RECSYS_DB_PATH` | `dataset/interactions.sqlite3` | Journal des interactions |
-| `RECSYS_OLLAMA_MODEL` | aucun | Active le LLM via Ollama |
-| `RECSYS_OLLAMA_URL` | `http://127.0.0.1:11434` | Adresse d'Ollama |
-| `RECSYS_OPENAI_COMPAT_URL` | aucun | Active le LLM via un serveur compatible Chat Completions (URL complète) |
-| `RECSYS_PROFILE_MODEL` | `local` | Nom du modèle envoyé à ce serveur |
+| `RECSYS_MODEL_PATH` | `dataset/experiment/model.npz` | Served model |
+| `RECSYS_FINANCE_DIR` | `dataset/experiment/finance` | μ, Σ, risk snapshot |
+| `RECSYS_DATA_DIR` | `dataset/processed` | Prices shown on the asset pages |
+| `RECSYS_DB_PATH` | `dataset/interactions.sqlite3` | Interaction log |
+| `RECSYS_OLLAMA_MODEL` | none | Enables the LLM through Ollama |
+| `RECSYS_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama address |
+| `RECSYS_OPENAI_COMPAT_URL` | none | Enables the LLM through a Chat Completions compatible server (full URL) |
+| `RECSYS_PROFILE_MODEL` | `local` | Model name sent to that server |
 
-## Résultats
+## Results
 
-Moyenne ± écart-type sur cinq graines (`python -m src.train.run --seeds 42 1 2 3 4`), sur le test
-temporel : 3 455 clients, dont 1 035 absents du train. La colonne « cibles sous le plafond » ne garde
-que les 564 clients qui ont acheté au moins un actif compatible avec leur plafond. Le détail par
-cohorte est dans `dataset/experiment-multi/metrics.json` (`dataset/experiment/metrics.json` pour le
-run servi, graine 42).
+Mean ± standard deviation over five seeds (`python -m src.train.run --seeds 42 1 2 3 4`), on the
+temporal test: 3,455 clients, 1,035 of them absent from train. The "targets under the ceiling" column keeps
+only the 564 clients who bought at least one asset compatible with their ceiling. The per-cohort
+detail is in `dataset/experiment-multi/metrics.json` (`dataset/experiment/metrics.json` for the
+served run, seed 42).
 
-| Classement | NDCG@10 | Recall@20 | NDCG@10, cibles sous le plafond | Top 10 au-dessus du plafond |
+| Ranking | NDCG@10 | Recall@20 | NDCG@10, targets under the ceiling | Top 10 above the ceiling |
 |---|---|---|---|---|
-| Aléatoire | 0,014 ± 0,001 | 0,048 ± 0,002 | 0,019 ± 0,004 | – |
-| Les plus populaires | 0,167 | 0,346 | 0,165 | – |
-| LightGCN (ablation, sans contraste) | 0,194 ± 0,002 | 0,395 ± 0,003 | 0,224 ± 0,004 | – |
-| NLGCL | 0,192 ± 0,003 | 0,389 ± 0,002 | 0,220 ± 0,003 | 76,4 % |
-| NLGCL + filtre de risque | 0,053 ± 0,001 | 0,100 ± 0,001 | 0,366 ± 0,005 | 0 % |
-| NLGCL + filtre + MPT (λ = 0,25), servi | 0,051 ± 0,001 | 0,099 ± 0,001 | 0,356 ± 0,007 | 0 % |
+| Random | 0.014 ± 0.001 | 0.048 ± 0.002 | 0.019 ± 0.004 | – |
+| Most popular | 0.167 | 0.346 | 0.165 | – |
+| LightGCN (ablation, no contrast) | 0.194 ± 0.002 | 0.395 ± 0.003 | 0.224 ± 0.004 | – |
+| NLGCL | 0.192 ± 0.003 | 0.389 ± 0.002 | 0.220 ± 0.003 | 76.4 % |
+| NLGCL + risk filter | 0.053 ± 0.001 | 0.100 ± 0.001 | 0.366 ± 0.005 | 0 % |
+| NLGCL + filter + MPT (λ = 0.25), served | 0.051 ± 0.001 | 0.099 ± 0.001 | 0.356 ± 0.007 | 0 % |
 
-- Les deux modèles appris battent nettement les références, avec un écart entre graines bien plus petit que l'écart avec la popularité.
-- Le filtre de risque fait chuter le NDCG brut, parce que 80,8 % des achats réels du test dépassent le plafond de l'acheteur. Sur les cibles compatibles avec ce plafond, ce qu'un conseil adapté peut retrouver, il est le meilleur. Le MPT réduit en plus la variance simulée du portefeuille (−2,8·10⁻⁴ sur 1 969 clients) pour 4 % de NDCG.
-- Sur l'ensemble du test, le terme contrastif de NLGCL ne gagne pas sur l'ablation LightGCN (écart dans le bruit). Le réglage du poids et de la température sur la validation (`python -m src.train.tune_nlgcl`) choisit un poids de 0,01, mais le gain ne se retrouve pas sur le test (0,192 ± 0,005). Le contraste aide en revanche les 112 clients absents du graphe mais avec des actifs connus : 0,206 ± 0,010 contre 0,192 ± 0,007 pour LightGCN, sur chaque graine.
-- Profil en texte libre sur les 40 profils écrits par l'équipe (qwen2.5:7b) : macro-F1 de 0,34 (règles), 0,56 (actor) et 0,74 (actor + réflexion) en français ; 0,11, 0,67 et 0,81 en anglais.
+- Both learned models clearly beat the baselines, with a gap between seeds much smaller than the gap with popularity.
+- The risk filter makes the raw NDCG drop, because 80.8 % of the real test purchases exceed the buyer's ceiling. On the targets compatible with that ceiling, which is what suitable advice can recover, it is the best. MPT additionally reduces the simulated portfolio variance (−2.8·10⁻⁴ over 1,969 clients) for 4 % of NDCG.
+- On the whole test set, the contrastive term of NLGCL does not beat the LightGCN ablation (difference within the noise). Tuning the weight and the temperature on validation (`python -m src.train.tune_nlgcl`) selects a weight of 0.01, but the gain is not found on test (0.192 ± 0.005). The contrast does help the 112 clients absent from the graph but with known assets: 0.206 ± 0.010 against 0.192 ± 0.007 for LightGCN, on every seed.
+- Free-text profile on the 40 profiles written by the team (qwen2.5:7b): macro-F1 of 0.34 (rules), 0.56 (actor) and 0.74 (actor + reflection) in French; 0.11, 0.67 and 0.81 in English.
 
-## Réentraîner le modèle et reproduire les résultats
+## Retrain the model and reproduce the results
 
-`python -m src.train.run` réentraîne NLGCL et l'ablation LightGCN (environ 5 min sur CPU), puis écrit le modèle servi par l'API. `--skip-ablation` n'entraîne que NLGCL (environ 1 min 30 s), ce qui suffit pour la démo mais retire la ligne LightGCN des résultats. Les commandes suivantes relisent `dataset/experiment/model.npz` ou relancent l'expérience :
+`python -m src.train.run` retrains NLGCL and the LightGCN ablation (about 5 min on CPU), then writes the model served by the API. `--skip-ablation` only trains NLGCL (about 1 min 30 s), which is enough for the demo but removes the LightGCN row from the results. The following commands reread `dataset/experiment/model.npz` or rerun the experiment:
 
-| Commande | Résultat |
+| Command | Result |
 |---|---|
-| `python -m src.train.run --seeds 42 1 2 3 4` | Même expérience sur cinq graines, moyenne et écart-type dans `dataset/experiment-multi/metrics.json`. Ne remplace pas le modèle servi |
-| `python -m src.train.tune_nlgcl --contrastive-weights 0.01 0.05 0.2 --temperatures 0.1 0.2 0.5` | Choisit le poids et la température du contraste sur la **validation** seulement (`nlgcl_tuning/validation_grid.csv`, `selected.json`) |
-| `python -m src.train.run --risk-tolerance 1` | Run complet, avec en plus l'ablation du filtre tolérant (une classe au-dessus du plafond, pénalisée) |
-| `python -m src.eval.tune` | Choisit λ et le rétrécissement de μ sur la **validation** (`tuning/validation_grid.csv`, `tuning/selected.json`). Les valeurs retenues sont les défauts de `src.train.run` |
-| `python -m src.train.run --seeds 42 1 2` | Même run sur 3 graines, moyenne et écart-type de chaque métrique (`dataset/experiment-multi/metrics.json`) : ce sont les chiffres de la section Résultats |
-| `python -m src.train.tune_nlgcl --contrastive-weights 0.05 --temperatures 0.2` | Compare NLGCL et LightGCN sur la **validation** pour une grille de poids du contraste et de températures (`nlgcl_tuning/`). Ajoutez `--epochs 30` pour revoir pourquoi la limite est passée à 80 |
-| `python -m src.serve.benchmark_api` | Latence réelle de `/recommend` sur le serveur lancé (budget de 2 s ; `--check-deferred` mesure aussi `/explain`) |
-| `python -m src.eval.lambda_sweep` | Courbe pertinence / diversification sur le test pour chaque λ (`lambda_sweep/`) |
-| `python -m src.rerank.calibrate` | γ implicite des portefeuilles réels par niveau de risque (`gamma_calibration.json`) |
-| `python -m src.llm.evaluate_profiles` | Profil contre les vrais `riskLevel` (modèle local requis) |
-| `python -m src.llm.text_benchmark --draft-suite` | Essai du texte libre sur 40 cas (10 Thomas et 30 brouillons synthétiques, modèle local requis) |
-| `python -m src.llm.explanation_benchmark` | Fidélité des explications, LLM contre gabarit (modèle local requis) |
+| `python -m src.train.run --seeds 42 1 2 3 4` | Same experiment on five seeds, mean and standard deviation in `dataset/experiment-multi/metrics.json`. Does not replace the served model |
+| `python -m src.train.tune_nlgcl --contrastive-weights 0.01 0.05 0.2 --temperatures 0.1 0.2 0.5` | Chooses the contrast weight and temperature on **validation** only (`nlgcl_tuning/validation_grid.csv`, `selected.json`) |
+| `python -m src.train.run --risk-tolerance 1` | Full run, plus the ablation of the tolerant filter (one class above the ceiling, penalized) |
+| `python -m src.eval.tune` | Chooses λ and the μ shrinkage on **validation** (`tuning/validation_grid.csv`, `tuning/selected.json`). The selected values are the defaults of `src.train.run` |
+| `python -m src.train.run --seeds 42 1 2` | Same run on 3 seeds, mean and standard deviation of each metric (`dataset/experiment-multi/metrics.json`): these are the figures of the Results section |
+| `python -m src.train.tune_nlgcl --contrastive-weights 0.05 --temperatures 0.2` | Compares NLGCL and LightGCN on **validation** for a grid of contrast weights and temperatures (`nlgcl_tuning/`). Add `--epochs 30` to see again why the limit was raised to 80 |
+| `python -m src.serve.benchmark_api` | Real latency of `/recommend` on the running server (2 s budget; `--check-deferred` also measures `/explain`) |
+| `python -m src.eval.lambda_sweep` | Relevance / diversification curve on test for each λ (`lambda_sweep/`) |
+| `python -m src.rerank.calibrate` | Implied γ of the real portfolios by risk level (`gamma_calibration.json`) |
+| `python -m src.llm.evaluate_profiles` | Profile against the real `riskLevel` (local model required) |
+| `python -m src.llm.text_benchmark --draft-suite` | Free-text trial on 40 cases (10 from Thomas and 30 synthetic drafts, local model required) |
+| `python -m src.llm.explanation_benchmark` | Faithfulness of the explanations, LLM against template (local model required) |
 
-Pour mesurer les contributions de l'équipe, passez les quatre fichiers JSON à
-`python -m src.llm.text_benchmark --require-team`. La commande attend dix profils
-étiquetés par membre et exclut les brouillons synthétiques.
+To measure the team's contributions, pass the four JSON files to
+`python -m src.llm.text_benchmark --require-team`. The command expects ten labeled
+profiles per member and excludes the synthetic drafts.
 
-Les profils sont disponibles en deux versions, avec les mêmes `id` et les mêmes
-niveaux : le français d'origine (`src/llm/fixtures/<prénom>_profiles.json`) et une
-traduction anglaise (`src/llm/fixtures/en/<prénom>_profiles.json`). **Pour une
-démo ou un rapport en anglais, utilisez les fichiers de `en/`** :
+The profiles are available in two versions, with the same `id`s and the same
+levels: the original French (`src/llm/fixtures/<first name>_profiles.json`) and an
+English translation (`src/llm/fixtures/en/<first name>_profiles.json`). **For an
+English demo or report, use the files in `en/`**:
 
 ```bash
 python -m src.llm.text_benchmark --require-team src/llm/fixtures/en/alfred_profiles.json src/llm/fixtures/en/ethan_profiles.json src/llm/fixtures/en/nicolas_profiles.json src/llm/fixtures/en/thomas_profiles.json
 ```
 
-Comparez les deux runs pour voir l'effet de la langue. Le garde-fou pour un
-refus explicite de perdre du capital existe dans les deux langues, et les
-autres règles par mots-clés privilégient le français.
-Si vous modifiez un profil, mettez à jour les deux versions : un test vérifie
-qu'elles gardent les mêmes `id` et niveaux.
+Compare the two runs to see the effect of the language. The safeguard for an
+explicit refusal to lose capital exists in both languages, and the
+other keyword rules favor French.
+If you change a profile, update both versions: a test checks
+that they keep the same `id`s and levels.
 
-**Choix documentés**
+**Documented choices**
 
-- **μ rétréci vers la moyenne (δ = 1)**. Le rendement attendu sur 60 jours est trop bruité : avec μ brut, augmenter λ dégradait à la fois le NDCG, la diversité et la variance. Avec δ = 1, le score MPT ne classe plus que par la variance ajoutée au portefeuille. λ = 0,25 et δ = 1 sont choisis sur la validation (NDCG au moins égal à 95 % du filtre seul, puis plus forte baisse de variance).
-- **γ reste une grille fixe** (4 / 3 / 2 / 1). Le γ implicite des portefeuilles réels est négatif en médiane à tous les niveaux et ne décroît pas avec le niveau déclaré : la volatilité médiane des portefeuilles est de 0,28 à 0,29 quel que soit le niveau. Il n'y a donc rien à calibrer de façon fiable.
-- **Pas de filtre de bande de volatilité du portefeuille**. 0 % des portefeuilles « conservative » et 0,5 % des « income » sont déjà dans leur bande : un tel filtre ne laisserait que des actifs qui réduisent le risque, ce que le re-ranker MPT favorise déjà.
-- **Démarrage à froid** : moyenne des embeddings des actifs détenus (pondérée par montant à la démo), sinon popularité filtrée par le plafond de risque. Un mélange avec la popularité pour les clients à 2 actifs ou moins n'améliore pas la validation : il n'est pas retenu.
+- **μ shrunk toward the mean (δ = 1)**. The 60-day expected return is too noisy: with raw μ, increasing λ degraded NDCG, diversity and variance all at once. With δ = 1, the MPT score only ranks by the variance added to the portfolio. λ = 0.25 and δ = 1 are chosen on validation (NDCG at least 95 % of the filter alone, then the largest variance drop).
+- **γ stays a fixed grid** (4 / 3 / 2 / 1). The implied γ of real portfolios is negative at the median at every level and does not decrease with the declared level: the median portfolio volatility is 0.28 to 0.29 whatever the level. There is therefore nothing to calibrate reliably.
+- **No portfolio volatility band filter**. 0 % of the "conservative" portfolios and 0.5 % of the "income" ones are already inside their band: such a filter would only keep assets that reduce risk, which the MPT re-ranker already favors.
+- **Cold start**: mean of the embeddings of the held assets (weighted by amount in the demo), otherwise popularity filtered by the risk ceiling. Blending with popularity for clients with 2 assets or fewer does not improve validation: it is not kept.
 
-## Données
+## Data
 
-[FAR-Trans](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0) : transactions réelles de clients particuliers d'une banque grecque, du 2 janvier 2018 au 30 novembre 2022. `python -m src.data.load_and_check` régénère ces chiffres dans `dataset/processed/stats.md`.
+[FAR-Trans](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0): real transactions of retail clients of a Greek bank, from 2 January 2018 to 30 November 2022. `python -m src.data.load_and_check` regenerates these figures in `dataset/processed/stats.md`.
 
-| Mesure | Valeur |
+| Measure | Value |
 |---|---|
-| Transactions (achats / ventes) | 388 048 (228 913 / 159 135) |
-| Clients / actifs achetés / actifs cotés | 29 090 / 320 / 807 |
-| Couples client-actif distincts (achats) | 89 884 |
-| Densité de la matrice d'achats | 0,97 % |
-| Actifs distincts achetés par client (médiane / moyenne) | 1 / 3,09 |
-| Part des achats sur les 10 actifs les plus achetés | 48,2 % |
+| Transactions (buys / sells) | 388,048 (228,913 / 159,135) |
+| Clients / assets bought / assets listed | 29,090 / 320 / 807 |
+| Distinct client-asset pairs (buys) | 89,884 |
+| Density of the purchase matrix | 0.97 % |
+| Distinct assets bought per client (median / mean) | 1 / 3.09 |
+| Share of purchases on the 10 most bought assets | 48.2 % |
 
-Une interaction est un **achat**. Les ventes servent seulement à reconstruire les portefeuilles.
+An interaction is a **purchase**. Sells are only used to rebuild the portfolios.
 
-**Seuils retenus**
+**Chosen thresholds**
 
-| Étape | Règle |
+| Step | Rule |
 |---|---|
-| Filtrage clients / actifs | Aucun : tous les acheteurs sont gardés. Un filtre « 3 actifs par client » n'en laisserait que 8 842 sur 29 090 ; les clients avec peu d'actifs sont le cas démarrage à froid |
-| Split temporel (`src/eval/split.py`) | 70 / 15 / 15 % des dates d'achat : train avant le 16/07/2021, validation jusqu'au 23/02/2022, test ensuite. Validation et test ne gardent que les nouveaux couples client-actif |
-| Taille du split | Train 158 053 achats, 25 355 clients, 288 actifs. Test 6 134 achats, 3 455 clients, dont 1 035 absents du train |
-| Portefeuilles (`src/data/holdings.py`) | Vente supérieure à la position connue : position ramenée à 0 (556 couples, parts achetées avant 2018). Le même jour, achats avant ventes. Transactions partagées (comptes joints probables) : gardées pour chaque co-titulaire |
-| Prix (`src/data/asset_returns.py`) | Saut de plus de 50 % qui revient à ±20 % en 5 cotations : erreur de prix effacée (6 cas). Trous de 5 jours au plus comblés par le dernier prix |
-| μ et Σ | μ : moyenne exponentielle des rendements (`span=60`), annualisée, puis rétrécie vers la moyenne des actifs dans le re-ranker (δ = 1, voir plus haut). Σ : 252 derniers jours, Ledoit-Wolf. Actifs avec au moins 60 rendements dans la fenêtre |
-| Classes de risque 1 à 7 | Volatilité annualisée découpée selon l'échelle SRRI (0,5 / 2 / 5 / 10 / 15 / 25 %). Moins de 60 rendements : classe médiane de la sous-catégorie (28 actifs) |
-| ETF PEA (`src/data/pea/`) | 19 ETF lus sur justETF (éligibilité PEA et cotation à Paris vérifiées), pays tels que publiés, classe de risque calculée sur la volatilité justETF |
+| Client / asset filtering | None: all buyers are kept. A "3 assets per client" filter would keep only 8,842 of 29,090; clients with few assets are the cold-start case |
+| Temporal split (`src/eval/split.py`) | 70 / 15 / 15 % of purchase dates: train before 16/07/2021, validation until 23/02/2022, test after. Validation and test only keep new client-asset pairs |
+| Split size | Train 158,053 purchases, 25,355 clients, 288 assets. Test 6,134 purchases, 3,455 clients, 1,035 of them absent from train |
+| Portfolios (`src/data/holdings.py`) | Sell larger than the known position: position set to 0 (556 pairs, shares bought before 2018). Same day, buys before sells. Shared transactions (probable joint accounts): kept for each co-holder |
+| Prices (`src/data/asset_returns.py`) | Jump of more than 50 % that returns to ±20 % within 5 quotes: price error erased (6 cases). Gaps of at most 5 days filled with the last price |
+| μ and Σ | μ: exponential mean of returns (`span=60`), annualized, then shrunk toward the asset mean in the re-ranker (δ = 1, see above). Σ: last 252 days, Ledoit-Wolf. Assets with at least 60 returns in the window |
+| Risk classes 1 to 7 | Annualized volatility cut according to the SRRI scale (0.5 / 2 / 5 / 10 / 15 / 25 %). Fewer than 60 returns: median class of the subcategory (28 assets) |
+| PEA ETFs (`src/data/pea/`) | 19 ETFs read from justETF (PEA eligibility and Paris listing checked), countries as published, risk class computed on the justETF volatility |
 
-## Propriétaires des dossiers
+## Folder owners
 
-| Qui | Dossiers |
+| Who | Folders |
 |---|---|
 | Ethan (Project Lead) | `src/eval/`, `src/graph/`, `README.md`, `.github/` |
-| Alfred (Data Engineer) | `src/data/`, `src/storage/`, route `/log_interaction` de `src/api/main.py` |
+| Alfred (Data Engineer) | `src/data/`, `src/storage/`, `/log_interaction` route of `src/api/main.py` |
 | Nicolas (Lead ML, Core) | `src/models/`, `src/rerank/` |
 | Thomas (ML Ops) | `src/train/`, `src/serve/`, `src/llm/`, `src/api/main.py` |
-| Toute l'équipe | `web/` |
+| The whole team | `web/` |
 
-## Interfaces entre modules
+## Interfaces between modules
 
 | Module | Interface |
 |---|---|
-| Split (`src/eval/split.py`) | `temporal_split(buys, t1, t2) -> (train, validation, test)`, chacun au format `[customerID, ISIN, timestamp]`, un achat par ligne ; `check_no_leak` vérifie l'absence de fuite |
-| Graphe (`src/graph/build.py`) | `build_graph(train) -> (edge_index, user2idx, item2idx)`, voir précision ci-dessous |
-| Évaluation (`src/eval/metrics.py`) | `evaluate(ranked: dict[customerID, list[ISIN]], test) -> {"ndcg@10", "recall@20", ...}` |
-| Modèle (`src/models/nlgcl.py`) | `NLGCL(n_users, n_items, dim, n_layers, contrastive_weight)` avec `forward(edge_index) -> (user_emb, item_emb)` et `loss_parts(users, pos, neg, edge_index) -> (loss, bpr, contrastive)` ; `contrastive_weight=0` donne l'ablation LightGCN |
-| Portefeuilles (`src/data/holdings.py`) | `holdings_at(tx, prices, before) -> DataFrame[customerID, ISIN, units, value]` |
-| Prix et risque (`src/data/asset_returns.py`) | `expected_returns`, `covariance` (Ledoit-Wolf), `asset_risk -> DataFrame[ISIN, volatility, max_drawdown, risk_class, ...]` (classes 1 à 7) |
-| Snapshot servi (`dataset/experiment/finance/`) | `mu.parquet`, `sigma.parquet`, `asset_risk.parquet`, `assets.parquet`, écrits par `src.train.run` à la date de coupure du test |
-| Re-ranking (`src/rerank/mpt.py`) | `risk_filter(isins, asset_risk, ceiling) -> isins` et `mpt_rerank(isins, relevance, weights, mu, sigma, gamma, lam) -> isins` |
-| Prédiction (`src/serve/predict.py`) | `Recommender(model_path, finance_dir).predict(holdings: dict[ISIN, montant], profile, k=10) -> {items, ranking_source, unrecognized_isins}` |
-| Profil et LLM (`src/llm/`) | `build_profile(holdings, answers) -> Profile(risk_level, ceiling, gamma, gaps, source)`, `review_profile(holdings, answers, free_text, generate)` et `explain_suggestion(facts, generate)` |
+| Split (`src/eval/split.py`) | `temporal_split(buys, t1, t2) -> (train, validation, test)`, each in the format `[customerID, ISIN, timestamp]`, one purchase per row; `check_no_leak` checks there is no leak |
+| Graph (`src/graph/build.py`) | `build_graph(train) -> (edge_index, user2idx, item2idx)`, see the note below |
+| Evaluation (`src/eval/metrics.py`) | `evaluate(ranked: dict[customerID, list[ISIN]], test) -> {"ndcg@10", "recall@20", ...}` |
+| Model (`src/models/nlgcl.py`) | `NLGCL(n_users, n_items, dim, n_layers, contrastive_weight)` with `forward(edge_index) -> (user_emb, item_emb)` and `loss_parts(users, pos, neg, edge_index) -> (loss, bpr, contrastive)`; `contrastive_weight=0` gives the LightGCN ablation |
+| Portfolios (`src/data/holdings.py`) | `holdings_at(tx, prices, before) -> DataFrame[customerID, ISIN, units, value]` |
+| Prices and risk (`src/data/asset_returns.py`) | `expected_returns`, `covariance` (Ledoit-Wolf), `asset_risk -> DataFrame[ISIN, volatility, max_drawdown, risk_class, ...]` (classes 1 to 7) |
+| Served snapshot (`dataset/experiment/finance/`) | `mu.parquet`, `sigma.parquet`, `asset_risk.parquet`, `assets.parquet`, written by `src.train.run` at the test cutoff date |
+| Re-ranking (`src/rerank/mpt.py`) | `risk_filter(isins, asset_risk, ceiling) -> isins` and `mpt_rerank(isins, relevance, weights, mu, sigma, gamma, lam) -> isins` |
+| Prediction (`src/serve/predict.py`) | `Recommender(model_path, finance_dir).predict(holdings: dict[ISIN, amount], profile, k=10) -> {items, ranking_source, unrecognized_isins}` |
+| Profile and LLM (`src/llm/`) | `build_profile(holdings, answers) -> Profile(risk_level, ceiling, gamma, gaps, source)`, `review_profile(holdings, answers, free_text, generate)` and `explain_suggestion(facts, generate)` |
 
-### Précision sur `edge_index`
+### Note on `edge_index`
 
-Tenseur `torch.long` de forme `[2, E]` : ligne 0 = indice utilisateur (`user2idx`), ligne 1 = indice actif (`item2idx`). Les indices actifs ne sont **pas** décalés de `n_users`, et le graphe n'est **pas** symétrisé (une arête par couple utilisateur-actif distinct). Au modèle de construire la version symétrique ou décalée dont il a besoin.
+`torch.long` tensor of shape `[2, E]`: row 0 = user index (`user2idx`), row 1 = asset index (`item2idx`). Asset indices are **not** shifted by `n_users`, and the graph is **not** symmetrized (one edge per distinct user-asset pair). It is up to the model to build the symmetric or shifted version it needs.
 
-## Règles de travail
+## Working rules
 
-- Une branche par PR (`alfred/holdings`), personne ne pousse sur `main`.
-- PR petites, chacune avec au moins un test dans `tests/`. La CI doit être verte avant de merger.
-- `requirements.txt` : une ligne à la fois, rebase sur `main` juste avant de merger.
-- Le README appartient à Ethan : les autres écrivent leur section dans la description de leur PR.
-- Ne jamais commiter les données (`dataset/` est dans le `.gitignore`).
+- One branch per PR (`alfred/holdings`), nobody pushes to `main`.
+- Small PRs, each with at least one test in `tests/`. CI must be green before merging.
+- `requirements.txt`: one line at a time, rebase on `main` right before merging.
+- The README belongs to Ethan: the others write their section in their PR description.
+- Never commit the data (`dataset/` is in the `.gitignore`).

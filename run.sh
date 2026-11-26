@@ -15,11 +15,15 @@ if [ "$(uname -s)" = "Linux" ] && ! "$PY" -c "import torch" 2>/dev/null; then
   "$PY" -m pip install -q "torch>=2.2,<3" --index-url https://download.pytorch.org/whl/cpu
 fi
 "$PY" -m pip install -q -r requirements.txt
-"$PY" -m src.data.download
-[ -f dataset/processed/close_prices.parquet ] || "$PY" -m src.data.load_and_check
-if [ ! -f dataset/experiment/model.npz ]; then
-  echo "Training the model, about 2 minutes..."
-  "$PY" -m src.train.run --skip-ablation
+# Shipped weights and prepared prices are kept as is: no download, no retraining.
+if [ ! -f dataset/experiment/model.npz ] || [ ! -d dataset/experiment/finance ] \
+   || [ ! -f dataset/processed/close_prices.parquet ]; then
+  "$PY" -m src.data.download
+  [ -f dataset/processed/close_prices.parquet ] || "$PY" -m src.data.load_and_check
+  if [ ! -f dataset/experiment/model.npz ]; then
+    echo "Training the model, about 2 minutes..."
+    "$PY" -m src.train.run --skip-ablation
+  fi
 fi
 
 # Open the browser once the server has had time to start.

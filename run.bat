@@ -11,6 +11,8 @@ set PY=.venv\Scripts\python.exe
 
 echo Installing dependencies...
 %PY% -m pip install -q -r requirements.txt || goto :fail
+rem Shipped weights and prepared prices are kept as is: no download, no retraining.
+if exist dataset\experiment\model.npz if exist dataset\experiment\finance if exist dataset\processed\close_prices.parquet goto :serve
 %PY% -m src.data.download || goto :fail
 if not exist dataset\processed\close_prices.parquet (
   %PY% -m src.data.load_and_check || goto :fail
@@ -19,6 +21,8 @@ if not exist dataset\experiment\model.npz (
   echo Training the model, about 2 minutes...
   %PY% -m src.train.run --skip-ablation || goto :fail
 )
+
+:serve
 
 rem Open the browser once the server has had time to start.
 start "" /b cmd /c "timeout /t 5 /nobreak >nul & start http://127.0.0.1:8000"
