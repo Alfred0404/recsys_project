@@ -24,6 +24,7 @@ def site(tmp_path):
     prices = pd.concat([
         pd.DataFrame({"ISIN": "B", "timestamp": days, "closePrice": np.linspace(10, 20, len(days))}),  # doubles
         pd.DataFrame({"ISIN": "C", "timestamp": days, "closePrice": np.linspace(20, 10, len(days))}),  # halves
+        pd.DataFrame({"ISIN": "D", "timestamp": days[:3], "closePrice": [5, 0, 6]}),
     ])
     prices.to_parquet(data / "close_prices.parquet")
     pd.DataFrame({"ISIN": ["B"], "assetName": ["Bond"], "assetCategory": ["Bond"], "assetSubCategory": ["Gov"],
@@ -51,6 +52,7 @@ def test_prices_give_the_trend_over_the_chosen_window(site):
     assert data["B"]["change"] > 0 > data["C"]["change"]
     assert data["B"]["end"] == "2022-11-29" and data["B"]["start"] >= "2021-11-29"
     assert len(data["B"]["points"]) <= 54  # weekly points
+    assert data["B"]["points"][-1][0] == data["B"]["end"]
 
 
 def test_asset_page_data(site):
@@ -66,3 +68,12 @@ def test_prices_report_a_missing_history(tmp_path, site):
     app = create_app(tmp_path / "model.npz", tmp_path, tmp_path / "other.sqlite3", tmp_path / "processed")
     with TestClient(app) as client:
         assert client.get("/prices", params={"isins": "B"}).status_code == 404
+
+
+def test_charts_keep_observed_dates_and_ignore_nonpositive_closes(site):
+    prices = site.get("/asset/D").json()["prices"]
+    assert prices == [["2019-01-01", 5], ["2019-01-03", 6]]
+    trend = site.get("/prices", params={"isins": " d ", "years": 5}).json()["D"]
+    assert (trend["start"], trend["end"]) == ("2019-01-01", "2019-01-03")
+    assert trend["points"] == [["2019-01-03", 6]]
+    assert trend["change"] == pytest.approx(0.2)

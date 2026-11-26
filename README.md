@@ -32,9 +32,11 @@ Lancez le serveur avec l'environnement activé :
 python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Ouvrez http://127.0.0.1:8000 : une seule page, en français ou en anglais. Décrivez
-votre portefeuille dans la barre de recherche (les actifs cités sont reconnus), ajustez
-les options, puis cliquez sur un actif suggéré pour voir l'évolution de son cours.
+Ouvrez http://127.0.0.1:8000. Sélectionnez les actifs détenus par nom ou ISIN et
+ajustez leurs montants. Choisissez le questionnaire ou le profil en texte libre.
+En mode texte, le premier classement utilise un profil prudent. Le bouton
+**Analyser le texte et actualiser** lance l'analyse puis recalcule les suggestions.
+Ouvrez une fiche pour consulter les cours disponibles et demander une explication.
 Les courbes utilisent `dataset/processed/close_prices.parquet`, produit par
 `load_and_check`. Le site (`web/`) est servi par la même API, sans étape de
 build ni connexion internet. Pour la montrer depuis un autre appareil du même réseau,
@@ -86,8 +88,12 @@ contient les mesures de l'expérience et de la démo.
 | `python -m src.eval.lambda_sweep` | Courbe pertinence / diversification sur le test pour chaque λ (`lambda_sweep/`) |
 | `python -m src.rerank.calibrate` | γ implicite des portefeuilles réels par niveau de risque (`gamma_calibration.json`) |
 | `python -m src.llm.evaluate_profiles` | Profil contre les vrais `riskLevel` (modèle local requis) |
-| `python -m src.llm.text_benchmark --draft-suite` | Chemin texte libre sur 40 profils étiquetés (modèle local requis) |
+| `python -m src.llm.text_benchmark --draft-suite` | Essai du texte libre sur 40 cas (10 Thomas et 30 brouillons synthétiques, modèle local requis) |
 | `python -m src.llm.explanation_benchmark` | Fidélité des explications, LLM contre gabarit (modèle local requis) |
+
+Pour mesurer les contributions de l'équipe, passez les quatre fichiers JSON à
+`python -m src.llm.text_benchmark --require-team`. La commande attend dix profils
+étiquetés par membre et exclut les brouillons synthétiques.
 
 **Choix documentés**
 

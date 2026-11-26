@@ -7,6 +7,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+from threading import Lock
 from time import perf_counter
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
@@ -17,9 +18,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 import requests
 
+import numpy as np
 import pandas as pd
 
-from src.data.asset_returns import price_matrix
+from src.data.asset_returns import drop_price_glitches
 from src.llm.explainer import ExplanationFacts, explain_suggestion
 from src.llm.profile import Profile, QUESTIONNAIRE, build_profile
 from src.llm.reflection import configured_generator, review_profile
@@ -84,7 +86,12 @@ def load_prices(data_dir: Path) -> tuple[pd.DataFrame | None, pd.DataFrame | Non
     if assets_path.is_file():
         assets = pd.read_parquet(assets_path).sort_values("timestamp").drop_duplicates("ISIN", keep="last")
         assets = assets.set_index("ISIN")
-    return price_matrix(pd.read_parquet(prices_path)), assets
+    raw = pd.read_parquet(prices_path, columns=["timestamp", "ISIN", "closePrice"])
+    raw = raw.loc[raw["closePrice"].gt(0) & np.isfinite(raw["closePrice"])]
+    daily = raw.pivot(index="timestamp", columns="ISIN", values="closePrice").sort_index()
+    # The chart displays actual closes. The model can interpolate short gaps
+    # when estimating returns, but that would invent quote dates on these pages.
+    return drop_price_glitches(daily), assets
 
 
 def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
@@ -104,6 +111,7 @@ def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
             max_entries=1024, ttl=300,
         )
         app.state.prices = None  # loaded on first use: cleaning 800 price series takes a moment
+        app.state.price_lock = Lock()
         initialize(db_path)
         yield
 
@@ -194,7 +202,10 @@ def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
     def price_table(request: Request) -> pd.DataFrame:
         state = request.app.state
         if state.prices is None:
-            state.prices, state.asset_info = load_prices(data_dir)
+            with state.price_lock:
+                if state.prices is None:
+                    prices, state.asset_info = load_prices(data_dir)
+                    state.prices = prices
         if state.prices is None:
             raise HTTPException(status_code=404, detail="No price history: run python -m src.data.load_and_check.")
         return state.prices
@@ -203,16 +214,17 @@ def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
     def prices(request: Request, isins: str, years: int = 3) -> dict:
         """Weekly closes over the last `years` years and the change over that window, per asset."""
         table = price_table(request)
-        wanted = [isin for isin in dict.fromkeys(isins.upper().split(",")) if isin in table.columns][:20]
+        wanted = [isin for isin in dict.fromkeys(part.strip().upper() for part in isins.split(","))
+                  if isin in table.columns][:20]
         start = table.index.max() - pd.DateOffset(years=max(1, min(years, 5)))
         result = {}
         for isin in wanted:
             series = table.loc[table.index >= start, isin].dropna()
             if len(series) < 2:
                 continue
-            weekly = series.resample("W").last().dropna()
+            weekly = series.groupby(series.index.to_period("W")).tail(1)
             result[isin] = {
-                "points": [[day.strftime("%Y-%m-%d"), round(float(price), 4)] for day, price in weekly.items()],
+                "points": [[day.strftime("%Y-%m-%d"), float(price)] for day, price in weekly.items()],
                 "change": float(series.iloc[-1] / series.iloc[0] - 1),
                 "start": series.index[0].strftime("%Y-%m-%d"), "end": series.index[-1].strftime("%Y-%m-%d"),
             }
@@ -229,13 +241,15 @@ def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
         series = table[isin].dropna()
         info = request.app.state.asset_info
         row = info.loc[isin] if info is not None and isin in info.index else None
-        text = lambda key: None if row is None or pd.isna(row[key]) else str(row[key])
+        def text(key):
+            value = row.get(key) if row is not None else None
+            return None if pd.isna(value) else str(value)
         return {
             "isin": isin,
             "name": recommender.names.get(isin) or text("assetName") or isin,
             "risk_class": recommender.risk_classes.get(isin),
             "category": text("assetCategory"), "subcategory": text("assetSubCategory"), "sector": text("sector"),
-            "prices": [[day.strftime("%Y-%m-%d"), round(float(price), 4)] for day, price in series.items()],
+            "prices": [[day.strftime("%Y-%m-%d"), float(price)] for day, price in series.items()],
         }
 
     if WEB_DIR.is_dir():  # mounted last so every API route above keeps priority

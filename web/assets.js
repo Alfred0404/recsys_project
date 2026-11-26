@@ -1,27 +1,36 @@
 // Catalogue: every asset, filtered as you type, 20 at a time with their 1-year trend.
 const PAGE = 20;
 const CATEGORIES = ["Stock", "Bond", "MTF"];
-const view = { all: [], query: "", category: null, shown: PAGE, prices: {} };
+const view = { all: [], query: "", category: null, shown: PAGE, prices: {}, revision: 0 };
 
 const normalize = (text) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 function matching() {
   const q = normalize(view.query.trim());
-  return view.all.filter((a) => (!view.category || a.category === view.category)
+  const matches = view.all.filter((a) => (!view.category || a.category === view.category)
     && (!q || normalize(a.name).includes(q) || a.isin.toLowerCase().includes(q)));
+  const exact = matches.find((a) => a.isin.toLowerCase() === q);
+  return exact ? [exact, ...matches.filter((a) => a !== exact)] : matches;
 }
 
 async function loadPrices(assets) {
   const missing = assets.map((a) => a.isin).filter((isin) => !(isin in view.prices));
-  if (!missing.length) return;
-  const data = await api(`prices?isins=${missing.join(",")}&years=1`).catch(() => ({}));
-  for (const isin of missing) view.prices[isin] = data[isin] || null;  // null: no history, do not ask again
+  const jobs = [];
+  for (let offset = 0; offset < missing.length; offset += PAGE) {
+    const batch = missing.slice(offset, offset + PAGE);
+    jobs.push(api(`prices?isins=${encodeURIComponent(batch.join(","))}&years=1`).then((data) => {
+      for (const isin of batch) view.prices[isin] = data[isin] || null;
+    }).catch(() => {})); // leave failed requests uncached so a later render can retry
+  }
+  await Promise.all(jobs);
 }
 
 async function render() {
+  const revision = ++view.revision;
   const found = matching();
   const visible = found.slice(0, view.shown);
   await loadPrices(visible);
+  if (revision !== view.revision) return;
   const list = document.getElementById("list");
   list.hidden = !found.length;
   list.replaceChildren(...visible.map((a) => {
@@ -32,7 +41,8 @@ async function render() {
       el("span", { class: "cat" }, a.category ? t(`cat_${a.category}`) : ""),
       el("span", { class: "risk" }, el("b", { class: "num" }, a.risk_class ? `${a.risk_class}/7` : "–"), el("br"), t("risk")),
       series ? sparkline(series.points, up) : el("span"),
-      series ? el("span", { class: `change num ${up ? "up" : "down"}` }, pct(series.change), el("small", {}, t("over_1"))) : el("span"));
+      series ? el("span", { class: `change num ${up ? "up" : "down"}` }, pct(series.change),
+        el("small", {}, `${series.start} – ${series.end}`)) : el("span"));
   }));
   const error = document.getElementById("error");
   error.hidden = found.length > 0 || !view.all.length;
@@ -52,11 +62,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   const input = document.getElementById("filter");
   let timer;
   input.addEventListener("input", () => {  // small debounce: each keystroke would otherwise fetch prices
+    view.query = input.value;
+    view.shown = PAGE;
+    view.revision += 1;
     clearTimeout(timer);
-    timer = setTimeout(() => { view.query = input.value; view.shown = PAGE; render(); }, 150);
+    timer = setTimeout(render, 150);
   });
   input.addEventListener("keydown", (e) => {  // Enter opens the first match
-    const first = e.key === "Enter" && matching()[0];
+    if (e.key !== "Enter" || !input.value.trim()) return;
+    view.query = input.value;
+    const first = matching()[0];
     if (first) location.href = `asset.html?isin=${encodeURIComponent(first.isin)}&from=assets`;
   });
   document.getElementById("more").addEventListener("click", () => { view.shown += PAGE; render(); });
