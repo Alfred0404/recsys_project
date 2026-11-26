@@ -3,14 +3,8 @@ const PAGE = 20;
 const CATEGORIES = ["Stock", "Bond", "MTF"];
 const view = { all: [], query: "", category: null, shown: PAGE, prices: {}, revision: 0 };
 
-const normalize = (text) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-
 function matching() {
-  const q = normalize(view.query.trim());
-  const matches = view.all.filter((a) => (!view.category || a.category === view.category)
-    && (!q || normalize(a.name).includes(q) || a.isin.toLowerCase().includes(q)));
-  const exact = matches.find((a) => a.isin.toLowerCase() === q);
-  return exact ? [exact, ...matches.filter((a) => a !== exact)] : matches;
+  return searchAssets(view.all, view.query, { category: view.category });
 }
 
 async function loadPrices(assets) {
@@ -37,7 +31,8 @@ async function render() {
     const series = view.prices[a.isin];
     const up = series ? series.change >= 0 : true;
     return el("a", { class: "row", href: `asset.html?isin=${encodeURIComponent(a.isin)}&from=assets` },
-      el("span", { class: "name" }, a.name, el("small", {}, a.isin)),
+      el("span", { class: "name" }, ...highlightParts(a.name, view.query).map((p) => p.hit ? el("mark", {}, p.text) : p.text),
+        el("small", {}, a.isin)),
       el("span", { class: "cat" }, a.category ? t(`cat_${a.category}`) : ""),
       el("span", { class: "risk", "data-risk": String(a.risk_class || "") }, el("b", { class: "num" }, a.risk_class ? `${a.risk_class}/7` : "–"), el("br"), t("risk")),
       series ? sparkline(series.points, up) : el("span"),

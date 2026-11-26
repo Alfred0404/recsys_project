@@ -3,6 +3,7 @@ const QUESTIONS = ["horizon", "goal", "loss", "experience"];
 const LAST_RESULT = "lastResult";
 const DEFAULT_AMOUNT = 1000;
 const MAX_HOLDINGS = 100;
+const SUGGESTIONS = 8;
 
 // randomUUID only exists on secure origins; the booth may serve over a LAN IP.
 function uuid() {
@@ -43,9 +44,12 @@ function fragment() {
 }
 
 function matches(query) {
-  if (query.length < 3 || state.chips.size >= MAX_HOLDINGS) return [];
-  return state.catalog.filter((a) => !state.chips.has(a.isin)
-    && (normalize(a.name).includes(query) || a.isin.toLowerCase().startsWith(query))).slice(0, 6);
+  if (!query.trim() || state.chips.size >= MAX_HOLDINGS) return [];
+  return searchAssets(state.catalog, query, { limit: SUGGESTIONS, exclude: new Set(state.chips.keys()) });
+}
+
+function highlighted(text, query) {
+  return highlightParts(text, query).map((p) => p.hit ? el("mark", {}, p.text) : p.text);
 }
 
 function exactAsset() {
@@ -65,15 +69,24 @@ function hideSuggest() {
 function renderSuggest() {
   const list = document.getElementById("suggest");
   const input = document.getElementById("query");
-  const found = matches(normalize(fragment()));
+  const query = fragment();
+  const found = matches(query);
+  const empty = query && !found.length && state.catalog.length > 0 && state.chips.size < MAX_HOLDINGS;
   state.suggestions = found;
   if (state.active >= found.length) state.active = -1;
-  list.hidden = !found.length;
+  list.hidden = !found.length && !empty;
   input.setAttribute("aria-expanded", String(found.length > 0));
+  if (empty) {
+    list.replaceChildren(el("li", { class: "none", role: "presentation" }, t("search_none", { q: query }),
+      el("a", { href: "assets.html" }, t("search_browse"))));
+    return;
+  }
   list.replaceChildren(...found.map((asset, i) => el("li", {
     role: "option", id: `opt-${i}`, "aria-selected": String(i === state.active),
     onpointerdown: (e) => { e.preventDefault(); addChip(asset); },
-  }, el("span", {}, asset.name), el("small", {}, asset.isin))));
+  }, el("span", { class: "sname" }, ...highlighted(asset.name, query)),
+  el("small", {}, [asset.isin, asset.category ? t(`cat_${asset.category}`) : "",
+    asset.risk_class ? `${asset.risk_class}/7` : ""].filter(Boolean).join(" · "))));
   if (state.active >= 0) input.setAttribute("aria-activedescendant", `opt-${state.active}`);
   else input.removeAttribute("aria-activedescendant");
 }
@@ -165,7 +178,7 @@ async function addPrices(view, submission) {
 async function submit(event) {
   event.preventDefault();
   if (state.loading) return;
-  const asset = exactAsset();
+  const asset = exactAsset() || matches(fragment())[0];  // submit takes the best match instead of failing
   if (asset) addChip(asset);
   if (document.getElementById("query").value.trim()) {
     showError("err_selection");
@@ -322,7 +335,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSuggest();
     } else if (e.key === "Enter" && input.value.trim()) {
       e.preventDefault();
-      const asset = exactAsset() || state.suggestions[state.active];
+      const asset = exactAsset() || state.suggestions[state.active] || state.suggestions[0];
       if (asset) addChip(asset);
       else { showError("err_selection"); renderSuggest(); }
     } else if (e.key === "Escape") {

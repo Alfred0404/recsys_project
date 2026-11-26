@@ -163,7 +163,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -.01
   background: var(--surface); color: var(--ink); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .5); }
 .suggest li { padding: 10px 14px; border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; font-size: 15px; }
 .suggest li[aria-selected="true"], .suggest li:hover { background: #E8EEF2; }
-.suggest small { color: var(--muted); }
+.suggest small { color: var(--muted); white-space: nowrap; }
+.suggest mark, .rows mark { background: none; color: inherit; font-weight: 700; }
+.suggest li.none { cursor: default; display: block; color: var(--muted); }
+.suggest li.none a { color: var(--ink); text-decoration: underline; }
 
 .chips { width: min(880px, 100%); display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; min-height: 8px; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-radius: 999px; font-size: 14px; color: var(--ink); box-shadow: none; }
