@@ -35,7 +35,7 @@ def site(tmp_path):
 
 def test_site_pages_are_served_next_to_the_api(site):
     for path in ("/", "/asset.html", "/assets.html", "/styles.css", "/i18n.js", "/chart.js", "/app.js", "/asset.js",
-                 "/assets.js", "/search.js", "/hero.js", "/logo.svg"):
+                 "/assets.js", "/search.js", "/hero.js", "/pea.js", "/logo.svg"):
         assert site.get(path).status_code == 200, path
     assert site.get("/health").json()["status"] == "ready"  # API routes keep priority over the site
 
@@ -78,3 +78,21 @@ def test_charts_keep_observed_dates_and_ignore_nonpositive_closes(site):
     assert (trend["start"], trend["end"]) == ("2019-01-01", "2019-01-03")
     assert trend["points"] == [["2019-01-03", 6]]
     assert trend["change"] == pytest.approx(0.2)
+
+
+SP500, MSCI_EUROPE = "FR0011871128", "FR0013412038"
+
+
+def test_pea_exposure_before_and_after_adding_an_etf(site):
+    assert len(site.get("/pea/etfs").json()) == 19
+    data = site.post("/pea/exposure", json={"holdings": {SP500: 5000}, "candidate": MSCI_EUROPE, "share": 0.1}).json()
+    us = next(row for row in data["rows"] if row["country"] == "United States")
+    assert us["before"] == pytest.approx(96.97)
+    assert us["after"] == pytest.approx(96.97 * 0.9)
+    assert data["before"]["top_country"] == "United States"
+
+
+def test_pea_exposure_rejects_unknown_etfs_and_large_shares(site):
+    assert site.post("/pea/exposure", json={"candidate": "XX0000000000"}).status_code == 422
+    assert site.post("/pea/exposure", json={"holdings": {"XX0000000000": 1}, "candidate": SP500}).status_code == 422
+    assert site.post("/pea/exposure", json={"candidate": SP500, "share": 0.9}).status_code == 422

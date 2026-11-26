@@ -8,7 +8,7 @@ from src.api.main import Interaction
 from src.storage.export import export_csv
 from src.storage.interactions import initialize, insert_event
 
-APP = Path(__file__).resolve().parents[1] / "app" / "streamlit_app.py"
+APP = Path(__file__).resolve().parents[1] / "web" / "app.js"
 
 
 def test_every_logged_event_is_sent_by_the_demo():

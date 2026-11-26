@@ -4,6 +4,22 @@ Projet d'équipe : recommandation d'actifs par GNN (NLGCL), re-ranking selon la 
 
 **Équipe** : Ethan Petain (Project Lead), Alfred De Vulpian (Data Engineer), Nicolas Cottez-Abrate (Lead ML Engineer), Thomas Confolent (ML Engineer Ops).
 
+## Lancement rapide
+
+Avec Python 3.11 ou plus récent installé, une seule commande depuis le dossier du dépôt :
+
+```bash
+run.bat        # Windows (double-clic possible)
+./run.sh       # macOS / Linux
+```
+
+Le script crée `.venv`, installe les dépendances, télécharge FAR-Trans, prépare les données
+et entraîne le modèle servi s'ils manquent, puis lance le serveur et ouvre http://127.0.0.1:8000.
+Il entraîne seulement NLGCL (`--skip-ablation`) : la démo n'a pas besoin de l'ablation LightGCN.
+Temps mesuré sur un portable sous Windows : 6 min 24 s du clone au serveur lancé avec l'ancienne
+procédure complète, dont 1 min 29 s d'entraînement sans l'ablation. Les lancements suivants
+démarrent en quelques secondes. `Ctrl+C` arrête le serveur.
+
 ## Reproduire l'expérience et lancer la démo
 
 Depuis le dossier du dépôt, avec Python 3.11 ou plus récent.
@@ -71,13 +87,9 @@ au classement final. Le champ `score` mesure la pertinence issue du modèle.
 Les actions de la démo sont journalisées dans `dataset/interactions.sqlite3`
 (`python -m src.storage.export` les exporte en CSV).
 
-L'ancienne interface Streamlit reste disponible, dans un second terminal, l'API étant lancée :
-
-```bash
-python -m streamlit run app/streamlit_app.py
-```
-
-Elle contient aussi la vue d'exposition par pays des ETF PEA.
+La section **Et si vous ajoutiez un ETF PEA ?** de la page d'accueil compare l'exposition
+par pays d'un portefeuille d'ETF PEA avant et après l'ajout d'un ETF (19 ETF éligibles, données
+justETF). Elle ne dépend pas du modèle.
 
 ### Vérification facultative du profil
 
@@ -127,6 +139,8 @@ questionnaire / texte ─► src/llm : profil (plafond, γ) ─► src/serve : s
 | `POST /log_interaction` | Journalise un événement anonyme de la démo dans SQLite |
 | `GET /prices?isins=…&years=3` | Cours hebdomadaires et variation sur la période |
 | `GET /asset/{isin}` | Historique quotidien et description d'un actif |
+| `GET /pea/etfs` | Les 19 ETF éligibles au PEA de la vue d'exposition |
+| `POST /pea/exposure` | `{holdings, candidate, share}` → exposition par pays avant et après l'ajout |
 
 **Variables d'environnement** (toutes facultatives)
 
@@ -140,7 +154,6 @@ questionnaire / texte ─► src/llm : profil (plafond, γ) ─► src/serve : s
 | `RECSYS_OLLAMA_URL` | `http://127.0.0.1:11434` | Adresse d'Ollama |
 | `RECSYS_OPENAI_COMPAT_URL` | aucun | Active le LLM via un serveur compatible Chat Completions (URL complète) |
 | `RECSYS_PROFILE_MODEL` | `local` | Nom du modèle envoyé à ce serveur |
-| `RECSYS_API_URL` | `http://localhost:8000` | API appelée par l'interface Streamlit |
 
 ## Résultats
 
@@ -164,7 +177,7 @@ peut retrouver.
 
 ## Réentraîner le modèle et reproduire les résultats
 
-`python -m src.train.run` réentraîne NLGCL et l'ablation LightGCN (environ 5 min sur CPU), puis écrit le modèle servi par l'API. Les commandes suivantes relisent `dataset/experiment/model.npz` :
+`python -m src.train.run` réentraîne NLGCL et l'ablation LightGCN (environ 5 min sur CPU), puis écrit le modèle servi par l'API. `--skip-ablation` n'entraîne que NLGCL (environ 1 min 30 s), ce qui suffit pour la démo mais retire la ligne LightGCN des résultats. Les commandes suivantes relisent `dataset/experiment/model.npz` :
 
 | Commande | Résultat |
 |---|---|
@@ -234,7 +247,7 @@ Une interaction est un **achat**. Les ventes servent seulement à reconstruire l
 
 | Qui | Dossiers |
 |---|---|
-| Ethan (Project Lead) | `src/eval/`, `src/graph/`, `app/`, `README.md`, `.github/` |
+| Ethan (Project Lead) | `src/eval/`, `src/graph/`, `README.md`, `.github/` |
 | Alfred (Data Engineer) | `src/data/`, `src/storage/`, route `/log_interaction` de `src/api/main.py` |
 | Nicolas (Lead ML, Core) | `src/models/`, `src/rerank/` |
 | Thomas (ML Ops) | `src/train/`, `src/serve/`, `src/llm/`, `src/api/main.py` |

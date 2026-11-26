@@ -135,3 +135,25 @@ def test_finance_ignores_predicted_profiles_and_requires_full_price_coverage(mon
     assert ranked["mpt_risk"] == {"observed": ["B", "A"], "partially_priced": ["A", "B"], "predicted": ["B"]}
     assert summary["risk_level_source"] == {"observed": 2, "default": 1}
     assert summary["paired_top1_variance"]["users"] == 1
+
+
+def test_skip_ablation_trains_only_nlgcl(monkeypatch, tmp_path):
+    data = pd.DataFrame(
+        [("warm", "A", "2022-01-01"), ("other", "B", "2022-01-01"), ("third", "C", "2022-01-01"),
+         ("fourth", "D", "2022-01-01"), ("warm", "B", "2022-02-01"), ("warm", "C", "2022-03-01"),
+         ("other", "D", "2022-03-01")],
+        columns=["customerID", "ISIN", "timestamp"],
+    ).assign(transactionType="Buy")
+    data["timestamp"] = pd.to_datetime(data["timestamp"])
+    processed = tmp_path / "dataset" / "processed"
+    processed.mkdir(parents=True)
+    data.to_parquet(processed / "transactions.parquet")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["src.train.run", "--epochs", "1", "--threads", "1", "--skip-finance",
+                                      "--skip-ablation", "--t1", "2022-02-01", "--t2", "2022-03-01"])
+    main()
+    out = tmp_path / "dataset" / "experiment"
+    report = json.loads((out / "metrics.json").read_text(encoding="utf-8"))
+    assert "nlgcl" in report["test_metrics"] and "lightgcn" not in report["test_metrics"]
+    assert set(pd.read_csv(out / "loss.csv")["model"]) == {"NLGCL"}
+    assert (out / "model.npz").is_file()

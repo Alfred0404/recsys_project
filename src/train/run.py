@@ -268,17 +268,18 @@ def run_seed(args, tx, experiment):
     print(f"Seed {args.seed}", flush=True)
     args.out.mkdir(parents=True, exist_ok=True)
     nlgcl, loss, selected, val_pairs = train_model(experiment, "NLGCL", args.contrastive_weight, args)
-    lightgcn, ablation_loss, ablation_selected, _ = train_model(experiment, "LightGCN", 0.0, args)
+    ablation_loss, ablation_selected, light_ranked = [], None, None
+    if not args.skip_ablation:  # the demo only serves NLGCL; skipping LightGCN halves the training time
+        lightgcn, ablation_loss, ablation_selected, _ = train_model(experiment, "LightGCN", 0.0, args)
+        light_ranked = experiment.rank(experiment.test, embeddings_for(lightgcn, experiment), experiment.test_history, k=20)
 
     # Selection has finished before generating any rankings on the test period.
     nlgcl_embeddings = embeddings_for(nlgcl, experiment)
-    lightgcn_embeddings = embeddings_for(lightgcn, experiment)
     # Score the whole catalogue so the risk filter can reach suitable assets ranked
     # beyond the first hundred; evaluation still reads the top of each list.
     scored = experiment.rank(
         experiment.test, nlgcl_embeddings, experiment.test_history, k=len(experiment.item_index),
     )
-    light_ranked = experiment.rank(experiment.test, lightgcn_embeddings, experiment.test_history, k=20)
     users = sorted(experiment.test["customerID"].unique())
     available = set(experiment.item_index)
     # The baseline and learned model exclude the same complete purchase histories.
@@ -288,9 +289,10 @@ def run_seed(args, tx, experiment):
     rankings = {
         "random": baseline_random,
         "most_popular": baseline_popular,
-        "lightgcn": ordered_isins(light_ranked),
         "nlgcl": ordered_isins(scored),
     }
+    if light_ranked is not None:
+        rankings["lightgcn"] = ordered_isins(light_ranked)
     summary = {
         "seed": args.seed,
         "training": {
@@ -437,6 +439,8 @@ def main():
     parser.add_argument("--t1", help="Manual train cutoff (before validation)")
     parser.add_argument("--t2", help="Manual test cutoff")
     parser.add_argument("--skip-finance", action="store_true", help="Skip the financial ablation and serving snapshot")
+    parser.add_argument("--skip-ablation", action="store_true",
+                        help="Do not train the LightGCN ablation (faster setup for the demo; metrics lack its row)")
     args = parser.parse_args()
     seeds = args.seeds if args.seeds is not None else [args.seed]
     if len(set(seeds)) != len(seeds) or any(not 0 <= seed < 2**64 for seed in seeds):
