@@ -1,5 +1,5 @@
 // Hero scene: the "spread" of possible portfolio paths, drawn as threads of light, one colour per risk class.
-// Riskier classes fan out wider. Threads above the risk ceiling chosen in the graph card dim,
+// Riskier classes fan out wider. Threads above the risk ceiling of the portfolio shown in the hero card dim,
 // the pointer combs through them, and one white thread carries "your portfolio".
 (() => {
   const COLORS = ["#5B9BE6", "#3CC6B4", "#8FCB6E", "#F2BE4A", "#F58C4E", "#E8674D", "#D0558A"];
@@ -37,9 +37,9 @@
   const t0 = performance.now();
 
   function ceiling() {
-    const card = document.getElementById("graph-card");
-    const slider = document.getElementById("ceiling");
-    return !card || card.hidden || !slider ? 7 : Number(slider.value);
+    const card = document.getElementById("pick-card");
+    const value = Number(card?.dataset.ceiling);
+    return !card || card.hidden || !value ? 7 : value;
   }
 
   function resize() {
@@ -104,7 +104,7 @@
 
     for (let k = 1; k <= 7; k += 1) lit[k - 1] += ((k <= cap ? 1 : 0.12) - lit[k - 1]) * (still ? 1 : 0.08);
     for (const th of threads) {
-      const reveal = still ? 1 : ease((t - 0.2 - th.k * 0.09) / 2.2);
+      const reveal = still ? 1 : ease((t - th.k * 0.04) / 1.1);
       if (reveal <= 0) continue;
       const pts = trace(th, t, reveal, close);
       if (pts.length < 4) continue;
@@ -116,7 +116,7 @@
       stroke(pts);
     }
 
-    const reveal = still ? 1 : ease((t - 1.1) / 2.4);
+    const reveal = still ? 1 : ease((t - 0.4) / 1.2);
     if (reveal > 0) {
       const pts = trace(mine, t, reveal, close);
       if (pts.length >= 4) {
@@ -151,7 +151,7 @@
   new ResizeObserver(resize).observe(stage);
   new IntersectionObserver(([entry]) => setRunning(entry.isIntersecting)).observe(stage);
   document.addEventListener("visibilitychange", () => setRunning(stage.getBoundingClientRect().bottom > 0));
-  if (still) document.getElementById("ceiling")?.addEventListener("input", () => draw(99));
+  if (still) document.addEventListener("ceilingchange", () => draw(99));
 
   stage.addEventListener("pointermove", (event) => {
     if (event.pointerType === "touch") return;
@@ -161,8 +161,8 @@
   });
   stage.addEventListener("pointerleave", () => { pointer.ton = 0; });
 
-  // The graph card drifts a few whole pixels against the pointer (parallax), unless a finger or a drag is on it.
-  const card = document.getElementById("graph-card");
+  // The hero card drifts a few whole pixels against the pointer (parallax), unless a finger or a drag is on it.
+  const card = document.getElementById("pick-card");
   stage.addEventListener("pointermove", (event) => {
     if (!card || still || event.pointerType === "touch" || event.buttons) return;
     card.style.setProperty("--tx", `${Math.round((0.5 - event.clientX / window.innerWidth) * 18)}px`);

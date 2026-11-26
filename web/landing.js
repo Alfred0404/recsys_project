@@ -1,128 +1,148 @@
-// Hero graph: every dot is a real catalogue asset, stacked in its risk class (1-7).
-// Client-to-asset links are illustrative. The slider moves the risk ceiling live.
-const GRAPH = { width: 600, height: 440, base: 392, top: 132, gap: 8.6, perRow: 8, clients: 12 };
-const RISK_COLORS = ["#2B6CB0", "#2A9D8F", "#6FA35A", "#D9A033", "#E07A3F", "#C8553D", "#8E2C48"];
+// Hero card: a real recommendation, computed live by the API for three sample portfolios.
+// Only the portfolios and profiles are fixed here; every name and figure comes from the model.
+const PICK_SCENARIOS = [
+  { key: "prudent", level: 0, holdings: ["GRS001003037", "GRS260333000", "GRS015003007"] },
+  { key: "balanced", level: 1, holdings: ["GRS395363005", "GRS213213002", "GRS087003000"] },
+  { key: "dynamic", level: 2, holdings: ["GRS343313003", "GRS393503008", "GRF000022001"] },
+];
+const PICK_QUESTIONS = ["horizon", "goal", "loss", "experience"];
+const PICK_ROTATE_MS = 7000;
 
-const graph = { assets: [], edges: [], svg: null, ceiling: 4 };
+const pick = { catalog: new Map(), results: [], index: 0, timer: 0, auto: true, paused: false };
 
-function laneX(k) {
-  return 30 + (k - 0.5) * ((GRAPH.width - 30) / 7);
+async function loadPicks() {
+  // The catalogue and the three recommendations are fetched in parallel.
+  const [catalog, ...results] = await Promise.all([api("assets"), ...PICK_SCENARIOS.map((scenario) => api("recommend", {
+    holdings: Object.fromEntries(scenario.holdings.map((isin) => [isin, 1000])),
+    answers: Object.fromEntries(PICK_QUESTIONS.map((q) => [q, scenario.level])),
+  }))]);
+  pick.catalog = new Map(catalog.map((asset) => [asset.isin, asset]));
+  pick.results = PICK_SCENARIOS.map((scenario, i) => ({
+    scenario, result: results[i], holdings: scenario.holdings.filter((isin) => pick.catalog.has(isin)),
+  }));
+  pick.results = pick.results.filter((entry) => entry.holdings.length && entry.result.items.length);
+  if (!pick.results.length) throw new Error("No sample recommendation");
 }
 
-function seeded(seed) {
-  let s = seed;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+// Plain words for the 1-7 risk scale, so a newcomer never has to decode "7/7".
+const RISK_WORD = { 1: "very_low", 2: "very_low", 3: "low", 4: "medium", 5: "fairly_high", 6: "high", 7: "very_high" };
+const riskWord = (risk) => t(`pick_risk_${RISK_WORD[risk] || "medium"}`);
+
+// Catalogue names are in capitals ("NATIONAL BANK OF GREECE"): soften them, keep short tokens like SA or S.A.
+const SMALL = new Set(["of", "and", "the", "de", "&"]);
+function niceName(name) {
+  if (name !== name.toUpperCase()) return name;
+  return name.toLowerCase().split(" ").map((word, i) => {
+    if (i && SMALL.has(word)) return word;
+    if (/^(s\.?a\.?|plc|sa|ae|a\/k|\(cr\))$/.test(word)) return word.toUpperCase();
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(" ");
 }
 
-function buildGraph(catalog) {
-  const byClass = new Map();
-  for (const asset of catalog) {
-    const k = Number(asset.risk_class);
-    if (k >= 1 && k <= 7) byClass.set(k, [...(byClass.get(k) || []), asset]);
-  }
-  const maxRows = Math.floor((GRAPH.base - GRAPH.top) / GRAPH.gap);
-  const width = (GRAPH.perRow - 1) * GRAPH.gap;
-  const dots = [];
-  for (let k = 1; k <= 7; k += 1) {
-    const list = (byClass.get(k) || []).slice(0, maxRows * GRAPH.perRow);
-    list.forEach((asset, i) => {
-      const row = Math.floor(i / GRAPH.perRow);
-      const col = i % GRAPH.perRow;
-      dots.push({ k, row, name: asset.name, x: laneX(k) - width / 2 + col * GRAPH.gap, y: GRAPH.base - row * GRAPH.gap });
-    });
-  }
-  const rnd = seeded(11);
-  const edges = [];
-  for (let c = 0; c < GRAPH.clients; c += 1) {
-    const cx = 60 + c * ((GRAPH.width - 90) / (GRAPH.clients - 1));
-    for (let m = 0; m < 3 && dots.length; m += 1) edges.push({ cx, dot: dots[Math.floor(rnd() * dots.length)] });
-  }
-  return { dots, edges, total: catalog.length };
+function renderPickTabs() {
+  const tabs = document.getElementById("pick-tabs");
+  tabs.replaceChildren(...pick.results.map((entry, i) => el("button", {
+    type: "button", role: "tab", class: "pick-tab", id: `pick-tab-${i}`, "aria-controls": "pick-body",
+    "aria-selected": String(i === pick.index), tabindex: i === pick.index ? "0" : "-1",
+    onclick: () => { pick.auto = false; showPick(i); },
+    onkeydown: (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      const n = pick.results.length;
+      pick.auto = false;
+      showPick((pick.index + (event.key === "ArrowRight" ? 1 : -1) + n) % n);
+      document.getElementById(`pick-tab-${pick.index}`).focus();
+    },
+  }, t(`pick_${entry.scenario.key}`))));
 }
 
-function drawGraph(data) {
-  const box = document.getElementById("graph");
-  const svg = svgEl("svg", { viewBox: `0 0 ${GRAPH.width} ${GRAPH.height}`, role: "img" });
-  const shade = svgEl("rect", { class: "g-shade", y: GRAPH.top - 18, height: GRAPH.base - GRAPH.top + 30, rx: 10 });
-  svg.append(shade);
+function renderPick() {
+  const entry = pick.results[pick.index];
+  if (!entry) return;
+  const { scenario, holdings, result } = entry;
+  const top = result.items[0];
+  const asset = pick.catalog.get(top.isin);
+  const before = top.volatility_before;
+  const after = top.volatility_after;
+  const hasVol = Number.isFinite(before) && Number.isFinite(after) && before > 0 && after < before;
 
-  const clientsY = 34;
-  const label = (x, y, key, anchor = "start") => {
-    const node = svgEl("text", { x, y, class: "g-label", "text-anchor": anchor, "data-key": key });
-    svg.append(node);
-    return node;
-  };
-  label(0, 14, "graph_clients");
+  const held = holdings.map((isin) => pick.catalog.get(isin));
+  const risks = held.map((a) => a.risk_class).filter(Boolean);
+  const lo = Math.min(...risks), hi = Math.max(...risks);
+  const heldRisk = !risks.length ? null : RISK_WORD[lo] === RISK_WORD[hi]
+    ? t("pick_held_same", { n: held.length, risk: riskWord(hi) })
+    : t("pick_held_range", { lo: riskWord(lo), hi: riskWord(hi) });
 
-  data.edges.forEach((edge, i) => {
-    const d = edge.dot;
-    edge.node = svgEl("path", {
-      class: "g-edge", d: `M${edge.cx} ${clientsY + 6} C ${edge.cx} ${clientsY + 70}, ${d.x} ${d.y - 90}, ${d.x} ${d.y}`,
-      pathLength: 1, style: `--delay: ${(i * 0.025).toFixed(3)}s`,
-    });
-    svg.append(edge.node);
-  });
-  const clientXs = [...new Set(data.edges.map((e) => e.cx))];
-  clientXs.forEach((x, i) => svg.append(svgEl("circle", { class: "g-client", cx: x, cy: clientsY, r: 6.5, style: `--delay: ${(i * 0.04).toFixed(2)}s` })));
+  const href = `asset.html?isin=${encodeURIComponent(top.isin)}`;
+  const body = document.getElementById("pick-body");
+  body.setAttribute("aria-labelledby", `pick-tab-${pick.index}`);
+  body.replaceChildren(el("div", { class: "pick-view" },
+    el("div", { class: "pick-step" },
+      el("p", { class: "pick-label" }, t(`pick_who_${scenario.key}`)),
+      el("p", { class: "pick-held" }, held.map((a) => niceName(a.name)).join(" · ")),
+      heldRisk ? el("p", { class: "pick-sub", "data-risk": String(hi) }, heldRisk) : null),
+    el("div", { class: "pick-step" },
+      el("p", { class: "pick-label" }, t("pick_adds")),
+      el("a", { class: "pick-top", href },
+        el("span", { class: "pick-top-name" }, niceName(top.name)),
+        el("span", { class: "pick-sub", "data-risk": String(top.risk_class) },
+          [asset?.category ? t(`cat_${asset.category}`) : null, t("pick_risk", { risk: riskWord(top.risk_class) })].filter(Boolean).join(" · ")))),
+    hasVol ? el("div", { class: "pick-result" },
+      el("p", { class: "pick-big" }, el("b", { class: "num" }, pct(1 - after / before, 0, false)), " ", t("pick_less")),
+      el("p", { class: "pick-expert num" }, t("pick_expert", { before: pct(before, 1, false), after: pct(after, 1, false) }))) : null,
+    el("div", { class: "pick-actions" },
+      el("button", { type: "button", class: "btn primary", onclick: () => openPick(entry, true) }, t("pick_see")),
+      el("button", { type: "button", class: "pick-link", onclick: () => openPick(entry, false) }, t("pick_mine"), " →"))));
 
-  data.dots.forEach((dot) => {
-    dot.node = svgEl("circle", {
-      class: "g-dot", cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: 3.1, fill: RISK_COLORS[dot.k - 1],
-      style: `--delay: ${(0.35 + dot.row * 0.035 + dot.k * 0.02).toFixed(3)}s`,
-    });
-    const title = svgEl("title");
-    title.textContent = dot.name;
-    dot.node.append(title);
-    svg.append(dot.node);
-  });
-
-  for (let k = 1; k <= 7; k += 1) {
-    const text = svgEl("text", { x: laneX(k), y: GRAPH.height - 18, class: "g-lane num", "text-anchor": "middle", fill: RISK_COLORS[k - 1] });
-    text.textContent = String(k);
-    const lane = data.dots.filter((dot) => dot.k === k);
-    const top = Math.min(GRAPH.base, ...lane.map((dot) => dot.y));
-    const count = svgEl("text", { x: laneX(k), y: top - 10, class: "g-count num", "text-anchor": "middle" });
-    count.textContent = String(lane.length);
-    svg.append(text, count);
-  }
-  label(GRAPH.width / 2, GRAPH.height - 1, "graph_axis", "middle");
-
-  const line = svgEl("line", { class: "g-ceiling", y1: GRAPH.top - 24, y2: GRAPH.base + 14 });
-  svg.append(line);
-  box.replaceChildren(svg);
-  Object.assign(graph, { svg, shade, line, data });
-  requestAnimationFrame(() => box.classList.add("ready"));
+  const card = document.getElementById("pick-card");
+  card.dataset.ceiling = String(result.profile.ceiling);
+  document.dispatchEvent(new CustomEvent("ceilingchange"));
 }
 
-function updateCeiling() {
-  if (!graph.svg) return;
-  const k = graph.ceiling;
-  const x = k >= 7 ? GRAPH.width : (laneX(k) + laneX(k + 1)) / 2;
-  graph.line.setAttribute("x1", x); graph.line.setAttribute("x2", x);
-  graph.line.style.opacity = k >= 7 ? 0 : 1;
-  graph.shade.setAttribute("x", x); graph.shade.setAttribute("width", Math.max(0, GRAPH.width - x));
-  let kept = 0;
-  for (const dot of graph.data.dots) {
-    const out = dot.k > k;
-    dot.node.classList.toggle("out", out);
-    if (!out) kept += 1;
+function showPick(i) {
+  pick.index = i;
+  renderPickTabs();
+  renderPick();
+  schedulePick();
+}
+
+function schedulePick() {
+  clearTimeout(pick.timer);
+  const card = document.getElementById("pick-card");
+  const rotating = pick.auto && !pick.paused && pick.results.length > 1
+    && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  card.classList.toggle("rotating", rotating);
+  card.style.setProperty("--rotate", `${PICK_ROTATE_MS}ms`);
+  if (rotating) pick.timer = setTimeout(() => showPick((pick.index + 1) % pick.results.length), PICK_ROTATE_MS);
+}
+
+// "See the suggestions" runs the demo on this portfolio; "With my portfolio" goes to the search box.
+function openPick(entry, run) {
+  pick.auto = false;
+  schedulePick();
+  if (!run) {
+    document.getElementById("ask").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("query").focus({ preventScroll: true });
+    return;
   }
-  for (const edge of graph.data.edges) edge.node.classList.toggle("out", edge.dot.k > k);
-  graph.svg.setAttribute("aria-label", t("graph_label"));
-  graph.svg.querySelectorAll("[data-key]").forEach((node) => { node.textContent = t(node.dataset.key); });
-  document.getElementById("ceiling-label").textContent = t("ceiling_label", { n: k });
-  document.getElementById("graph-caption").textContent = t("graph_caption", { kept: fmt(kept), total: fmt(graph.data.dots.length) });
+  const assets = entry.holdings.map((isin) => pick.catalog.get(isin));
+  if (typeof loadPortfolio === "function") loadPortfolio(assets, entry.scenario.level, true);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const slider = document.getElementById("ceiling");
-  slider.addEventListener("input", () => { graph.ceiling = Number(slider.value); updateCeiling(); });
+  const card = document.getElementById("pick-card");
+  const pause = (on) => { pick.paused = on; schedulePick(); };
+  card.addEventListener("pointerenter", () => pause(true));
+  card.addEventListener("pointerleave", () => pause(false));
+  card.addEventListener("focusin", () => pause(true));
+  card.addEventListener("focusout", (event) => { if (!card.contains(event.relatedTarget)) pause(false); });
   try {
-    drawGraph(buildGraph(await api("assets")));
-    updateCeiling();
+    await loadPicks();
+    card.classList.add("ready");
+    showPick(0);
   } catch (_) {
-    document.getElementById("graph-card").hidden = true;  // no API: the copy still stands on its own
+    card.hidden = true;  // no API: the copy still stands on its own
+    document.dispatchEvent(new CustomEvent("ceilingchange"));
   }
 });
 
-document.addEventListener("langchange", updateCeiling);
+document.addEventListener("langchange", () => { if (pick.results.length) { renderPickTabs(); renderPick(); } });
