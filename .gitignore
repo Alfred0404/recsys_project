@@ -7,3 +7,5 @@ node_modules/
 
 # Démo vidéo (fichiers lourds, générés)
 web/video/
+docs/Spread_Guide_Codebase.mp4
+demo/spread-demo.mp4
