@@ -104,7 +104,7 @@
 
     for (let k = 1; k <= 7; k += 1) lit[k - 1] += ((k <= cap ? 1 : 0.12) - lit[k - 1]) * (still ? 1 : 0.08);
     for (const th of threads) {
-      const reveal = still ? 1 : ease((t - 0.2 - th.k * 0.09) / 2.2);
+      const reveal = still ? 1 : ease((t - th.k * 0.04) / 1.1);
       if (reveal <= 0) continue;
       const pts = trace(th, t, reveal, close);
       if (pts.length < 4) continue;
@@ -116,7 +116,7 @@
       stroke(pts);
     }
 
-    const reveal = still ? 1 : ease((t - 1.1) / 2.4);
+    const reveal = still ? 1 : ease((t - 0.4) / 1.2);
     if (reveal > 0) {
       const pts = trace(mine, t, reveal, close);
       if (pts.length >= 4) {

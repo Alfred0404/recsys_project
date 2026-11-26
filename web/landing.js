@@ -11,15 +11,14 @@ const PICK_ROTATE_MS = 7000;
 const pick = { catalog: new Map(), results: [], index: 0, timer: 0, auto: true, paused: false };
 
 async function loadPicks() {
-  const catalog = await api("assets");
+  // The catalogue and the three recommendations are fetched in parallel.
+  const [catalog, ...results] = await Promise.all([api("assets"), ...PICK_SCENARIOS.map((scenario) => api("recommend", {
+    holdings: Object.fromEntries(scenario.holdings.map((isin) => [isin, 1000])),
+    answers: Object.fromEntries(PICK_QUESTIONS.map((q) => [q, scenario.level])),
+  }))]);
   pick.catalog = new Map(catalog.map((asset) => [asset.isin, asset]));
-  pick.results = await Promise.all(PICK_SCENARIOS.map(async (scenario) => {
-    const holdings = scenario.holdings.filter((isin) => pick.catalog.has(isin));
-    const result = await api("recommend", {
-      holdings: Object.fromEntries(holdings.map((isin) => [isin, 1000])),
-      answers: Object.fromEntries(PICK_QUESTIONS.map((q) => [q, scenario.level])),
-    });
-    return { scenario, holdings, result };
+  pick.results = PICK_SCENARIOS.map((scenario, i) => ({
+    scenario, result: results[i], holdings: scenario.holdings.filter((isin) => pick.catalog.has(isin)),
   }));
   pick.results = pick.results.filter((entry) => entry.holdings.length && entry.result.items.length);
   if (!pick.results.length) throw new Error("No sample recommendation");
