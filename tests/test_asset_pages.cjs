@@ -23,7 +23,7 @@ function loadPage(filename, globals = {}) {
     t: (key) => key, fmt: (value, digits = 0) => Number(value).toFixed(digits),
     ...globals,
   });
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "web", filename), "utf8"), context);
+  for (const file of ["search.js", filename]) vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "web", file), "utf8"), context);
   return { context, listeners, element, run: (script) => vm.runInContext(script, context) };
 }
 
@@ -111,4 +111,22 @@ test("only a verified model response receives the local model label", async () =
   explanation = { ...explanation, status: "incorrect_facts", source: "template", explanation: "Calculated text." };
   await context.requestExplanation();
   assert.match(JSON.stringify(element("why").children), /why_source_template/);
+});
+
+test("search matches words in any order, ignores accents, ranks ISIN and name starts first", () => {
+  const { context, run } = loadPage("assets.js", { api: async () => [] });
+  context.catalog = [
+    { isin: "FR0007052782", name: "Amundi CAC 40 UCITS ETF", category: "MTF" },
+    { isin: "XX1", name: "Société Générale", category: "Stock" },
+    { isin: "XX2", name: "Cacao Holdings", category: "Stock" },
+  ];
+  const names = (q, o) => context.searchAssets(context.catalog, q, o).map((a) => a.isin).join();
+  assert.equal(names("cac amundi"), "FR0007052782");
+  assert.equal(names("societe generale"), "XX1");
+  assert.equal(names("fr000705"), "FR0007052782");
+  assert.equal(names("cac"), "XX2,FR0007052782");  // name starts with beats a later word
+  assert.equal(names("stock"), "XX2,XX1");  // category is searchable
+  assert.equal(names("", { limit: 1 }), "FR0007052782");
+  assert.equal(names("zzz"), "");
+  assert.equal(names("a", { exclude: new Set(["FR0007052782"]) }), "XX2,XX1");
 });

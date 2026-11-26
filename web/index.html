@@ -103,35 +103,51 @@
   <section class="ask" id="ask">
     <div class="ask-panel">
       <h2 data-i18n="ask_title"></h2>
-      <form class="search-wrap" id="form" autocomplete="off">
-        <div class="search-wrap">
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
-            <input id="query" type="text" maxlength="150" data-i18n-placeholder="placeholder" data-i18n-label="search_label"
-                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
-            <button class="btn toggle" type="button" id="toggle" aria-expanded="false" aria-controls="options" data-i18n-label="options">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg>
-            </button>
-            <button class="btn accent" type="submit" id="go" data-i18n="go"></button>
+      <form id="form" class="ask-form" autocomplete="off">
+        <section class="ask-step" aria-labelledby="step-assets">
+          <h3 id="step-assets"><span class="step-dot num">1</span><span data-i18n="step_assets"></span></h3>
+          <p class="hint" data-i18n="step_assets_help"></p>
+          <div class="search-wrap">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+              <input id="query" type="text" maxlength="150" data-i18n-placeholder="placeholder" data-i18n-label="search_label"
+                     role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
+            </div>
+            <div class="suggest" id="suggest-box" hidden>
+              <div class="suggest-tabs" id="suggest-tabs"></div>
+              <p class="suggest-head" id="suggest-head"></p>
+              <ul id="suggest" role="listbox"></ul>
+            </div>
           </div>
-          <ul class="suggest" id="suggest" role="listbox" hidden></ul>
-        </div>
-        <div class="chips" id="chips" aria-live="polite"></div>
-        <fieldset class="profile-mode">
-          <legend data-i18n="mode_label"></legend>
-          <label><input type="radio" name="profile-mode" value="questionnaire" checked> <span data-i18n="mode_quiz"></span></label>
-          <label><input type="radio" name="profile-mode" value="text"> <span data-i18n="mode_text"></span></label>
-        </fieldset>
-        <label class="objective" id="text-profile" hidden>
-          <span data-i18n="objective_label"></span>
-          <textarea id="objective" rows="2" maxlength="500" data-i18n-placeholder="objective_placeholder"></textarea>
-        </label>
+          <div class="ask-shortcuts">
+            <button class="btn ghost-light" type="button" id="example" data-i18n="try_example"></button>
+            <a class="link-light" href="assets.html" data-i18n="search_browse"></a>
+          </div>
+          <div class="holdings" id="chips" aria-live="polite"></div>
+        </section>
+
+        <section class="ask-step" aria-labelledby="step-profile">
+          <h3 id="step-profile"><span class="step-dot num">2</span><span data-i18n="mode_label"></span></h3>
+          <div class="segmented" role="radiogroup">
+            <label><input type="radio" name="profile-mode" value="questionnaire" checked> <span data-i18n="mode_quiz"></span></label>
+            <label><input type="radio" name="profile-mode" value="text"> <span data-i18n="mode_text"></span></label>
+          </div>
+          <div class="option-grid" id="option-grid"></div>
+          <label class="objective" id="text-profile" hidden>
+            <span data-i18n="objective_label"></span>
+            <textarea id="objective" rows="2" maxlength="500" data-i18n-placeholder="objective_placeholder"></textarea>
+          </label>
+        </section>
+
+        <section class="ask-step ask-go">
+          <h3><span class="step-dot num">3</span><span data-i18n="step_go"></span></h3>
+          <div class="go-row">
+            <button class="btn accent big" type="submit" id="go" data-i18n="go"></button>
+            <label class="years" id="years-box"></label>
+          </div>
+          <p class="hint error" id="error" role="alert" hidden></p>
+        </section>
       </form>
-      <div class="options" id="options" inert>
-        <div class="options-inner"><div class="option-grid" id="option-grid"></div></div>
-      </div>
-      <p class="hint" data-i18n="hint"></p>
-      <p class="hint error" id="error" role="alert" hidden></p>
     </div>
   </section>
 
@@ -152,6 +168,7 @@
 
 <script src="i18n.js"></script>
 <script src="chart.js"></script>
+<script src="search.js"></script>
 <script src="landing.js"></script>
 <script src="app.js"></script>
 </body>
