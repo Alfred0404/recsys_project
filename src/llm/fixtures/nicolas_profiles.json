@@ -1,0 +1,62 @@
+[
+  {
+    "id": "nicolas-01",
+    "author": "nicolas",
+    "text": "Ce montant doit rembourser le solde de mon prêt immobilier dans dix-huit mois. On me parle beaucoup des cryptos, mais je ne peux pas arriver à l'échéance avec moins que ce que j'ai aujourd'hui.",
+    "risk_level": 1
+  },
+  {
+    "id": "nicolas-02",
+    "author": "nicolas",
+    "text": "I am 72 and this is most of what I have saved. If it fell by even 3% I would sell everything, so I only want things that barely move.",
+    "risk_level": 1
+  },
+  {
+    "id": "nicolas-03",
+    "author": "nicolas",
+    "text": "Je suis prudent de nature. Sur six ans, mon conseiller dit que je peux mettre un peu d'actions, mais je ne veux pas dépasser 25 % du total.",
+    "risk_level": 2
+  },
+  {
+    "id": "nicolas-04",
+    "author": "nicolas",
+    "text": "En mars 2020 j'ai perdu 20 % et j'ai tout vendu au plus bas. Mon horizon est de cinq ans et je ne veux pas revivre ça : de petites baisses oui, une grosse chute non.",
+    "risk_level": 2
+  },
+  {
+    "id": "nicolas-05",
+    "author": "nicolas",
+    "text": "Objectif : battre l'inflation de 2 ou 3 % par an sur cinq ans. Perte maximale acceptable sur l'année : 8 %.",
+    "risk_level": 2
+  },
+  {
+    "id": "nicolas-06",
+    "author": "nicolas",
+    "text": "Nous avons deux salaires stables et une épargne de précaution déjà placée à part. Cette somme est pour dans huit à dix ans, idéalement 60 % actions et 40 % obligations.",
+    "risk_level": 3
+  },
+  {
+    "id": "nicolas-07",
+    "author": "nicolas",
+    "text": "Medium term, around seven years. I could sit through a 20% fall without panicking, but I would not put everything into equities.",
+    "risk_level": 3
+  },
+  {
+    "id": "nicolas-08",
+    "author": "nicolas",
+    "text": "J'aime prendre des risques, mais c'est la moitié de mon patrimoine et je compte m'en servir dans six ans pour ouvrir un commerce.",
+    "risk_level": 3
+  },
+  {
+    "id": "nicolas-09",
+    "author": "nicolas",
+    "text": "Ingénieur de 30 ans, sans crédit, avec une épargne de précaution à côté. Je veux du 100 % actions pour vingt-cinq ans et je ne regarde presque jamais les cours.",
+    "risk_level": 4
+  },
+  {
+    "id": "nicolas-10",
+    "author": "nicolas",
+    "text": "My tech stocks lost 40% in 2022 and I bought more. I will not touch this money for twenty years and I do not need any income from it.",
+    "risk_level": 4
+  }
+]
