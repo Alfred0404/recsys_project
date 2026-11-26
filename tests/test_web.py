@@ -35,7 +35,7 @@ def site(tmp_path):
 
 def test_site_pages_are_served_next_to_the_api(site):
     for path in ("/", "/asset.html", "/assets.html", "/styles.css", "/i18n.js", "/chart.js", "/app.js", "/asset.js",
-                 "/assets.js", "/logo.svg"):
+                 "/assets.js", "/search.js", "/logo.svg"):
         assert site.get(path).status_code == 200, path
     assert site.get("/health").json()["status"] == "ready"  # API routes keep priority over the site
 
