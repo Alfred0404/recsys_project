@@ -104,8 +104,9 @@ démo ou un rapport en anglais, utilisez les fichiers de `en/`** :
 python -m src.llm.text_benchmark --require-team src/llm/fixtures/en/alfred_profiles.json src/llm/fixtures/en/ethan_profiles.json src/llm/fixtures/en/nicolas_profiles.json src/llm/fixtures/en/thomas_profiles.json
 ```
 
-Comparez les deux runs pour voir l'effet de la langue : les règles par mots-clés
-sont écrites en français, donc le texte anglais repose surtout sur le modèle.
+Comparez les deux runs pour voir l'effet de la langue. Le garde-fou pour un
+refus explicite de perdre du capital existe dans les deux langues, et les
+autres règles par mots-clés privilégient le français.
 Si vous modifiez un profil, mettez à jour les deux versions : un test vérifie
 qu'elles gardent les mêmes `id` et niveaux.
 
