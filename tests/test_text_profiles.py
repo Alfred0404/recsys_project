@@ -6,6 +6,8 @@ from src.llm.profile import QUESTIONNAIRE
 from src.llm.reflection import infer_profile, review_profile
 from src.llm.text_benchmark import DRAFT_FIXTURE, THOMAS_FIXTURE, load_cases
 
+TEAM_FIXTURES = {name: THOMAS_FIXTURE.with_name(f"{name}_profiles.json") for name in ("alfred", "nicolas", "thomas")}
+
 
 def test_successful_reflection_uses_actual_text_and_records_actor_separately():
     statement = "I accept small fluctuations, but stability matters most."
@@ -56,3 +58,15 @@ def test_draft_suite_is_balanced_and_cannot_pass_as_team_contributions():
     assert Counter(row["author"] for row in cases) == {"thomas": 10, "draft": 30}
     with pytest.raises(ValueError, match="10 cases from each"):
         load_cases([THOMAS_FIXTURE, DRAFT_FIXTURE], require_team=True)
+
+
+@pytest.mark.parametrize("author", sorted(TEAM_FIXTURES))
+def test_team_contribution_has_ten_cases_covering_every_level(author):
+    cases = load_cases([TEAM_FIXTURES[author]])
+    assert len(cases) == 10
+    assert {row["author"] for row in cases} == {author}
+    assert set(Counter(row["risk_level"] for row in cases)) == set(range(1, 5))
+
+
+def test_team_contributions_do_not_collide():
+    assert len(load_cases(list(TEAM_FIXTURES.values()))) == 30
