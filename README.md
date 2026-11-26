@@ -6,19 +6,37 @@ Projet d'équipe : recommandation d'actifs par GNN (NLGCL), re-ranking selon la 
 
 ## Reproduire l'expérience et lancer la démo
 
-Depuis le dossier du dépôt, avec Python 3.11 ou plus récent :
+Depuis le dossier du dépôt, avec Python 3.11 ou plus récent.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m src.data.download
-python -m src.data.load_and_check
-python -m src.train.run
+1. Créez et activez l'environnement :
+
+   | macOS / Linux | Windows (PowerShell) |
+   |---|---|
+   | `python3 -m venv .venv` | `python -m venv .venv` |
+   | `source .venv/bin/activate` | `.\.venv\Scripts\Activate.ps1` |
+
+2. Installez, préparez les données et entraînez (environ 5 min sur CPU) :
+
+   ```bash
+   python -m pip install -r requirements.txt
+   python -m src.data.download
+   python -m src.data.load_and_check
+   python -m src.train.run
+   ```
+
+3. Lancez le serveur (voir plus bas) et ouvrez http://127.0.0.1:8000.
+
+Pour lancer les tests, installez aussi les outils de test. Les tests n'ont besoin ni des
+données ni du modèle. Le test des pages web demande Node.js 18 ou plus récent :
+
+```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest
+node --test tests/test_asset_pages.cjs
 ```
 
-Sous macOS ou Linux, activez l'environnement avec `source .venv/bin/activate`.
+La CI GitHub ([.github/workflows/tests.yml](.github/workflows/tests.yml)) lance ces deux commandes sur chaque PR.
+
 Le téléchargement FAR-Trans vient de l'[Université de Glasgow](https://doi.org/10.5525/gla.researchdata.1658) (CC BY 4.0).
 Les données et les artefacts générés restent sous `dataset/`. Le run écrit
 `loss.csv`, `metrics.json`, `checkpoint.pt`, `model.npz` et un snapshot financier
@@ -42,23 +60,24 @@ Les courbes utilisent `dataset/processed/close_prices.parquet`, produit par
 build ni connexion internet. Pour la montrer depuis un autre appareil du même réseau,
 lancez avec `--host 0.0.0.0` et ouvrez `http://<IP de la machine>:8000`.
 
-L'ancienne interface Streamlit reste disponible, dans un second terminal :
+Le serveur charge les embeddings du run et les tables financières datées au démarrage.
+Le catalogue d'expérimentation est historique. La démo sert à observer les compromis du classement.
+
+Avec un portefeuille connu, l'API moyenne les embeddings des actifs
+détenus en les pondérant par montant. Le questionnaire fixe le plafond de risque.
+Quand les prix nécessaires sont disponibles, les candidats sont reclassés en
+simulant une allocation de 10 % au nouvel actif. L'ordre de la réponse correspond
+au classement final. Le champ `score` mesure la pertinence issue du modèle.
+Les actions de la démo sont journalisées dans `dataset/interactions.sqlite3`
+(`python -m src.storage.export` les exporte en CSV).
+
+L'ancienne interface Streamlit reste disponible, dans un second terminal, l'API étant lancée :
 
 ```bash
 python -m streamlit run app/streamlit_app.py
 ```
 
-Le serveur charge
-les embeddings du run et les tables financières datées au démarrage. Le catalogue
-d'expérimentation est historique. La démo sert à observer les compromis du classement.
-
-Sélectionnez un actif du catalogue et un montant, puis cliquez sur **Afficher les
-suggestions**. Avec un portefeuille connu, l'API moyenne les embeddings des actifs
-détenus en les pondérant par montant. Le questionnaire fixe le plafond de risque.
-Quand les prix nécessaires sont disponibles, les candidats sont reclassés en
-simulant une allocation de 10 % au nouvel actif. L'ordre de la réponse correspond
-au classement final. Le champ `score` mesure la pertinence issue du modèle.
-Les actions de la démo sont journalisées dans `dataset/interactions.sqlite3`.
+Elle contient aussi la vue d'exposition par pays des ETF PEA.
 
 ### Vérification facultative du profil
 
@@ -76,6 +95,72 @@ python -m src.eval.profile_benchmark
 Ce test compare la première réponse du modèle et le profil vérifié sur neuf cas
 synthétiques. Le [dernier rapport](docs/Finance_Recommendation_Week3_Status_Report_v3.pdf)
 contient les mesures de l'expérience et de la démo.
+
+## Architecture
+
+```
+FAR-Trans (CSV) ─► src/data : parquet typés, portefeuilles, μ, Σ, classes de risque 1 à 7
+                        │
+                        ▼
+      src/eval/split : split temporel 70/15/15 (achats seulement)
+                        │ train
+                        ▼
+      src/graph : graphe biparti client-actif ─► src/models : NLGCL (LightGCN + contraste entre couches)
+                                                        │ embeddings (model.npz)
+                                                        ▼
+questionnaire / texte ─► src/llm : profil (plafond, γ) ─► src/serve : score des embeddings
+                                                        ─► src/rerank : filtre de risque puis MPT (λ)
+                                                        │
+                                                        ▼
+                         src/api (FastAPI) ◄──► web/ (site statique)  ─► dataset/interactions.sqlite3
+```
+
+**Endpoints** (`src/api/main.py`)
+
+| Route | Rôle |
+|---|---|
+| `GET /health` | État du serveur et taille du catalogue |
+| `GET /assets` | Catalogue servi : ISIN, nom, catégorie, classe de risque, rang de popularité |
+| `POST /recommend` | `{holdings, answers, free_text, session_id}` → classement final, profil, `recommendation_id`. N'appelle jamais le LLM |
+| `POST /profile` | Vérification du profil par le LLM local, ou par les règles s'il n'y en a pas ; résultat mis en cache pour la session |
+| `POST /explain` | Explication d'un actif d'une recommandation déjà servie, vérifiée contre les chiffres du classement |
+| `POST /log_interaction` | Journalise un événement anonyme de la démo dans SQLite |
+| `GET /prices?isins=…&years=3` | Cours hebdomadaires et variation sur la période |
+| `GET /asset/{isin}` | Historique quotidien et description d'un actif |
+
+**Variables d'environnement** (toutes facultatives)
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `RECSYS_MODEL_PATH` | `dataset/experiment/model.npz` | Modèle servi |
+| `RECSYS_FINANCE_DIR` | `dataset/experiment/finance` | Snapshot μ, Σ, risque |
+| `RECSYS_DATA_DIR` | `dataset/processed` | Cours affichés sur les fiches |
+| `RECSYS_DB_PATH` | `dataset/interactions.sqlite3` | Journal des interactions |
+| `RECSYS_OLLAMA_MODEL` | aucun | Active le LLM via Ollama |
+| `RECSYS_OLLAMA_URL` | `http://127.0.0.1:11434` | Adresse d'Ollama |
+| `RECSYS_OPENAI_COMPAT_URL` | aucun | Active le LLM via un serveur compatible Chat Completions (URL complète) |
+| `RECSYS_PROFILE_MODEL` | `local` | Nom du modèle envoyé à ce serveur |
+| `RECSYS_API_URL` | `http://localhost:8000` | API appelée par l'interface Streamlit |
+
+## Résultats
+
+Run `python -m src.train.run` (graine 42), sur le test temporel : 3 455 clients, dont 1 035 absents du train.
+Le détail par cohorte et les mesures financières sont dans `dataset/experiment/metrics.json`.
+
+| Classement | NDCG@10 | Recall@20 | NDCG@10, cibles sous le plafond |
+|---|---|---|---|
+| Aléatoire | 0,015 | 0,050 | 0,024 |
+| Les plus populaires | 0,166 | 0,346 | 0,165 |
+| LightGCN (ablation, sans contraste) | 0,197 | 0,399 | 0,229 |
+| NLGCL | 0,189 | 0,389 | 0,217 |
+| NLGCL + filtre de risque | 0,051 | 0,099 | 0,356 |
+| NLGCL + filtre + MPT (λ = 0,25) | 0,049 | 0,099 | 0,344 |
+
+Les deux modèles appris battent nettement les références. Sur ce run, le terme contrastif de
+NLGCL ne gagne pas sur l'ablation LightGCN. Le filtre de risque fait chuter le NDCG brut,
+parce que beaucoup d'achats réels dépassent le plafond du client. En revanche, il est le
+meilleur sur les cibles compatibles avec ce plafond, c'est-à-dire ce qu'un conseil adapté
+peut retrouver.
 
 ## Réentraîner le modèle et reproduire les résultats
 
@@ -149,27 +234,26 @@ Une interaction est un **achat**. Les ventes servent seulement à reconstruire l
 
 | Qui | Dossiers |
 |---|---|
-| Ethan (Project Lead) | `src/eval/`, `src/graph/`, `app/`, `README.md` |
-| Alfred (Data Engineer) | `src/data/`, `src/storage/`, `src/api/routes_log.py` |
+| Ethan (Project Lead) | `src/eval/`, `src/graph/`, `app/`, `README.md`, `.github/` |
+| Alfred (Data Engineer) | `src/data/`, `src/storage/`, route `/log_interaction` de `src/api/main.py` |
 | Nicolas (Lead ML, Core) | `src/models/`, `src/rerank/` |
 | Thomas (ML Ops) | `src/train/`, `src/serve/`, `src/llm/`, `src/api/main.py` |
+| Toute l'équipe | `web/` |
 
-## Contrats (formats échangés)
+## Interfaces entre modules
 
-Tant qu'un module dont vous dépendez n'existe pas, codez contre une version factice qui respecte le même format.
-
-| Qui produit | Quoi | Format |
-|---|---|---|
-| Alfred | Prix et risque | `dataset/processed/returns.parquet` : dates en lignes, ISIN en colonnes, rendements quotidiens. `asset_risk.parquet` : `ISIN, volatility, max_drawdown, risk_class` (1 à 7) |
-| Alfred | Portefeuilles | `holdings(date) -> DataFrame[customerID, ISIN, units, value]` |
-| Ethan | Split | `train / val / test` au format `[customerID, ISIN, timestamp]`, un achat par ligne (`src/eval/split.py`) |
-| Ethan | Graphe | `edge_index`, `user2idx`, `item2idx` (`src/graph/build.py`), voir précision ci-dessous |
-| Ethan | Évaluation | `evaluate(ranked: dict[customerID, list[ISIN]], test) -> {"ndcg@10", "recall@20", ...}` (`src/eval/metrics.py`) |
-| Nicolas | Modèle | `NLGCL(n_users, n_items, dim)` avec `forward(edge_index) -> (user_emb, item_emb)` et `loss(users, pos, neg, edge_index)` |
-| Nicolas | Re-ranking | `risk_filter(isins, asset_risk, ceiling) -> isins` et `mpt_rerank(isins, relevance, weights, mu, sigma, gamma, lam) -> isins` |
-| Thomas | Prédiction | `predict(holdings: dict[ISIN, montant], profile, k=10) -> list[(ISIN, score)]` |
-| Thomas | LLM | `build_profile(facts, free_text) -> Profile(risk_level, ceiling, gamma, gaps)` et `explain(facts) -> str` |
-| Thomas / Ethan | API | `POST /recommend` avec `{holdings, answers, free_text}`, renvoie `{items: [{isin, name, score}], profile}` |
+| Module | Interface |
+|---|---|
+| Split (`src/eval/split.py`) | `temporal_split(buys, t1, t2) -> (train, validation, test)`, chacun au format `[customerID, ISIN, timestamp]`, un achat par ligne ; `check_no_leak` vérifie l'absence de fuite |
+| Graphe (`src/graph/build.py`) | `build_graph(train) -> (edge_index, user2idx, item2idx)`, voir précision ci-dessous |
+| Évaluation (`src/eval/metrics.py`) | `evaluate(ranked: dict[customerID, list[ISIN]], test) -> {"ndcg@10", "recall@20", ...}` |
+| Modèle (`src/models/nlgcl.py`) | `NLGCL(n_users, n_items, dim, n_layers, contrastive_weight)` avec `forward(edge_index) -> (user_emb, item_emb)` et `loss_parts(users, pos, neg, edge_index) -> (loss, bpr, contrastive)` ; `contrastive_weight=0` donne l'ablation LightGCN |
+| Portefeuilles (`src/data/holdings.py`) | `holdings_at(tx, prices, before) -> DataFrame[customerID, ISIN, units, value]` |
+| Prix et risque (`src/data/asset_returns.py`) | `expected_returns`, `covariance` (Ledoit-Wolf), `asset_risk -> DataFrame[ISIN, volatility, max_drawdown, risk_class, ...]` (classes 1 à 7) |
+| Snapshot servi (`dataset/experiment/finance/`) | `mu.parquet`, `sigma.parquet`, `asset_risk.parquet`, `assets.parquet`, écrits par `src.train.run` à la date de coupure du test |
+| Re-ranking (`src/rerank/mpt.py`) | `risk_filter(isins, asset_risk, ceiling) -> isins` et `mpt_rerank(isins, relevance, weights, mu, sigma, gamma, lam) -> isins` |
+| Prédiction (`src/serve/predict.py`) | `Recommender(model_path, finance_dir).predict(holdings: dict[ISIN, montant], profile, k=10) -> {items, ranking_source, unrecognized_isins}` |
+| Profil et LLM (`src/llm/`) | `build_profile(holdings, answers) -> Profile(risk_level, ceiling, gamma, gaps, source)`, `review_profile(holdings, answers, free_text, generate)` et `explain_suggestion(facts, generate)` |
 
 ### Précision sur `edge_index`
 
@@ -178,7 +262,7 @@ Tenseur `torch.long` de forme `[2, E]` : ligne 0 = indice utilisateur (`user2idx
 ## Règles de travail
 
 - Une branche par PR (`alfred/holdings`), personne ne pousse sur `main`.
-- PR petites, chacune avec au moins un test dans `tests/`.
+- PR petites, chacune avec au moins un test dans `tests/`. La CI doit être verte avant de merger.
 - `requirements.txt` : une ligne à la fois, rebase sur `main` juste avant de merger.
 - Le README appartient à Ethan : les autres écrivent leur section dans la description de leur PR.
 - Ne jamais commiter les données (`dataset/` est dans le `.gitignore`).
