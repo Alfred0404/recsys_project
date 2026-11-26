@@ -1,4 +1,4 @@
-"""Deterministic questionnaire and factual explanations for the Week 3 demo."""
+"""Score the risk questionnaire and format factual explanations."""
 
 from dataclasses import dataclass
 from math import fsum
