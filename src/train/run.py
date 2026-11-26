@@ -9,6 +9,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
@@ -20,6 +21,9 @@ from src.eval.ranking import ordered_isins, popularity_order, purchase_history, 
 from src.eval.split import COLS, check_no_leak, default_cutoffs, temporal_split
 from src.graph.build import build_graph
 from src.models.nlgcl import NLGCL
+
+
+DEFAULT_TEMPERATURE = 0.2
 
 
 class NegativeSampler:
@@ -73,15 +77,18 @@ class Experiment:
     t2: pd.Timestamp
 
     @classmethod
-    def from_transactions(cls, transactions: pd.DataFrame, t1=None, t2=None):
+    def from_transactions(cls, transactions: pd.DataFrame, t1=None, t2=None, *, validation_only=False):
+        """In validation-only mode, derive the usual cutoffs and discard future purchases."""
         buys = transactions.loc[transactions["transactionType"] == "Buy", COLS].drop_duplicates()
         if buys.empty:
             raise ValueError("No purchases found; check the FAR-Trans input tables.")
         d1, d2 = default_cutoffs(buys)
         t1 = pd.Timestamp(t1) if t1 is not None else d1
         t2 = pd.Timestamp(t2) if t2 is not None else d2
+        if validation_only:
+            buys = buys[buys["timestamp"] < t2]
         train, validation, test = temporal_split(buys, t1, t2)
-        if any(frame.empty for frame in (train, validation, test)):
+        if train.empty or validation.empty or (test.empty and not validation_only):
             raise ValueError("Each temporal split needs purchases; check data and cutoffs.")
         check_no_leak(train, validation, test)
         edge_index, user_index, item_index = build_graph(train)
@@ -153,6 +160,7 @@ def train_model(experiment: Experiment, name: str, contrastive_weight: float, ar
         dim=args.dim,
         n_layers=args.layers,
         contrastive_weight=contrastive_weight,
+        temperature=getattr(args, "temperature", DEFAULT_TEMPERATURE),
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     users, positive = experiment.edge_index
@@ -255,13 +263,9 @@ def cohort_metrics(experiment: Experiment, rankings: dict) -> dict:
     return result
 
 
-def run(args):
+def run_seed(args, tx, experiment):
     start = time.perf_counter()
-    torch.set_num_threads(args.threads)
-    tx = pd.read_parquet(args.processed_dir / "transactions.parquet")
-    experiment = Experiment.from_transactions(tx, args.t1, args.t2)
-    print(f"Train cutoff {experiment.t1.isoformat()}, test cutoff {experiment.t2.isoformat()}", flush=True)
-    print(test_statistics(experiment), flush=True)
+    print(f"Seed {args.seed}", flush=True)
     args.out.mkdir(parents=True, exist_ok=True)
     nlgcl, loss, selected, val_pairs = train_model(experiment, "NLGCL", args.contrastive_weight, args)
     lightgcn, ablation_loss, ablation_selected, _ = train_model(experiment, "LightGCN", 0.0, args)
@@ -294,6 +298,7 @@ def run(args):
             "learning_rate": args.lr,
             "layers": args.layers,
             "contrastive_weight": args.contrastive_weight,
+            "temperature": getattr(args, "temperature", DEFAULT_TEMPERATURE),
             "steps_per_epoch": args.steps,
             "evaluation_bpr_pairs": val_pairs,
             "nlgcl_best_epoch": selected,
@@ -338,12 +343,76 @@ def run(args):
     (args.out / "metrics.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps(summary["test_metrics"], indent=2), flush=True)
     print(f"Experiment complete in {summary['elapsed_seconds']:.1f}s. Outputs: {args.out}", flush=True)
+    return summary
+
+
+def metric_statistics(values):
+    """Describe the variation across the seeds supplied for this experiment."""
+    return {"mean": float(np.mean(values)), "std": float(np.std(values))}
+
+
+def aggregate_ranking_metrics(results, section):
+    return {
+        ranker: {
+            metric: metric_statistics([result[section][ranker][metric] for result in results])
+            for metric in ("ndcg@10", "recall@20")
+        }
+        for ranker in results[0][section]
+    }
+
+
+def run(args):
+    torch.set_num_threads(args.threads)
+    tx = pd.read_parquet(args.processed_dir / "transactions.parquet")
+    experiment = Experiment.from_transactions(tx, args.t1, args.t2)
+    print(f"Train cutoff {experiment.t1.isoformat()}, test cutoff {experiment.t2.isoformat()}", flush=True)
+    print(test_statistics(experiment), flush=True)
+    if args.seeds is None:
+        return run_seed(args, tx, experiment)
+
+    args.out.mkdir(parents=True, exist_ok=True)
+    # Keep each batch together. Publish the report only after its artifacts are in place.
+    with TemporaryDirectory(prefix=".batch-", dir=args.out) as temp:
+        staging = Path(temp)
+        batch = staging / staging.name.lstrip(".")
+        results = []
+        runs = []
+        for seed in args.seeds:
+            seed_dir = Path(f"seed-{seed}")
+            seed_args = argparse.Namespace(**(vars(args) | {"seed": seed, "out": batch / seed_dir}))
+            results.append(run_seed(seed_args, tx, experiment))
+            runs.append({"seed": seed, "metrics": (Path(batch.name) / seed_dir / "metrics.json").as_posix()})
+
+        summary = {
+            "seeds": args.seeds,
+            "runs": runs,
+            "cutoffs": results[0]["cutoffs"],
+            "counts": results[0]["counts"],
+            "test_metrics": aggregate_ranking_metrics(results, "test_metrics"),
+            "cohort_ndcg@10": {
+                cohort: {
+                    ranker: metric_statistics([result["cohort_ndcg@10"][cohort][ranker] for result in results])
+                    for ranker in metrics
+                    if ranker != "users"
+                }
+                for cohort, metrics in results[0]["cohort_ndcg@10"].items()
+            },
+        }
+        if "suitable_target_metrics" in results[0]:
+            summary["suitable_target_metrics"] = aggregate_ranking_metrics(results, "suitable_target_metrics")
+        report = staging / "metrics.json"
+        report.write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+        batch.rename(args.out / batch.name)
+        report.replace(args.out / report.name)
+    print(f"Metrics across seeds {args.seeds}: {args.out / 'metrics.json'}", flush=True)
+    return summary
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--processed-dir", type=Path, default=Path("dataset/processed"))
-    parser.add_argument("--out", type=Path, default=Path("dataset/experiment"))
+    parser.add_argument("--out", type=Path,
+                        help="Output directory (defaults to dataset/experiment or dataset/experiment-multi)")
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--dim", type=int, default=32)
@@ -352,6 +421,7 @@ def main():
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--contrastive-weight", type=float, default=0.05)
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     parser.add_argument("--mpt-weight", type=float, default=0.25,
                         help="MPT weight lambda, chosen on validation by python -m src.eval.tune")
     parser.add_argument("--mu-shrinkage", type=float, default=1.0,
@@ -360,15 +430,24 @@ def main():
                         help="Classes above the ceiling allowed in the penalized risk ablation (0 disables it)")
     parser.add_argument("--risk-penalty", type=float, default=0.5,
                         help="Normalized relevance lost per class above the ceiling")
-    parser.add_argument("--seed", type=int, default=42)
+    seed_options = parser.add_mutually_exclusive_group()
+    seed_options.add_argument("--seed", type=int, default=42, help="Seed for a single run")
+    seed_options.add_argument("--seeds", type=int, nargs="+",
+                              help="Run the same experiment with each seed and summarize mean and standard deviation")
     parser.add_argument("--t1", help="Manual train cutoff (before validation)")
     parser.add_argument("--t2", help="Manual test cutoff")
     parser.add_argument("--skip-finance", action="store_true", help="Skip the financial ablation and serving snapshot")
     args = parser.parse_args()
+    seeds = args.seeds if args.seeds is not None else [args.seed]
+    if len(set(seeds)) != len(seeds) or any(not 0 <= seed < 2**64 for seed in seeds):
+        parser.error("Seeds must be distinct integers in [0, 2**64).")
+    if args.out is None:
+        args.out = Path("dataset/experiment-multi" if args.seeds is not None else "dataset/experiment")
     if min(args.epochs, args.patience, args.dim, args.layers, args.steps, args.threads) < 1:
         parser.error("Epochs, patience, dimension, layers, steps and threads must be positive.")
-    if not np.isfinite([args.lr, args.contrastive_weight]).all() or args.lr <= 0 or args.contrastive_weight <= 0:
-        parser.error("Learning rate and contrastive weight must be finite and positive.")
+    training_parameters = (args.lr, args.contrastive_weight, args.temperature)
+    if not all(np.isfinite(value) and value > 0 for value in training_parameters):
+        parser.error("Learning rate, contrastive weight and temperature must be finite and positive.")
     if not 0 <= args.mpt_weight <= 1 or not 0 <= args.mu_shrinkage <= 1:
         parser.error("MPT weight and expected-return shrinkage must be between zero and one.")
     if not 0 <= args.risk_tolerance <= 6 or not np.isfinite(args.risk_penalty) or args.risk_penalty < 0:
