@@ -40,6 +40,10 @@ Depuis le dossier du dépôt, avec Python 3.11 ou plus récent.
    python -m src.train.run
    ```
 
+   Sous Linux, installez d'abord la version CPU de torch, sinon pip télécharge la version CUDA
+   (environ 2,5 Go) : `python -m pip install "torch>=2.2,<3" --index-url https://download.pytorch.org/whl/cpu`.
+   `run.sh` le fait tout seul.
+
 3. Lancez le serveur (voir plus bas) et ouvrez http://127.0.0.1:8000.
 
 Pour lancer les tests, installez aussi les outils de test. Les tests n'ont besoin ni des
@@ -157,23 +161,35 @@ questionnaire / texte ─► src/llm : profil (plafond, γ) ─► src/serve : s
 
 ## Résultats
 
-Run `python -m src.train.run` (graine 42), sur le test temporel : 3 455 clients, dont 1 035 absents du train.
-Le détail par cohorte et les mesures financières sont dans `dataset/experiment/metrics.json`.
+`python -m src.train.run --seeds 42 1 2` : moyenne ± écart-type sur 3 graines, sur le test temporel
+(3 455 clients, dont 1 035 absents du train). Le détail par graine et par cohorte est dans
+`dataset/experiment-multi/metrics.json`. La colonne « cibles sous le plafond » ne garde que les
+564 clients dont un achat réel respectait leur plafond de risque.
 
 | Classement | NDCG@10 | Recall@20 | NDCG@10, cibles sous le plafond |
 |---|---|---|---|
-| Aléatoire | 0,015 | 0,050 | 0,024 |
-| Les plus populaires | 0,166 | 0,346 | 0,165 |
-| LightGCN (ablation, sans contraste) | 0,197 | 0,399 | 0,229 |
-| NLGCL | 0,189 | 0,389 | 0,217 |
-| NLGCL + filtre de risque | 0,051 | 0,099 | 0,356 |
-| NLGCL + filtre + MPT (λ = 0,25) | 0,049 | 0,099 | 0,344 |
+| Aléatoire | 0,014 ± 0,002 | 0,047 | 0,018 |
+| Les plus populaires | 0,167 | 0,346 | 0,165 |
+| LightGCN (ablation, sans contraste) | 0,193 ± 0,003 | 0,394 | 0,225 |
+| NLGCL | 0,192 ± 0,001 | 0,387 | 0,220 |
+| NLGCL + filtre de risque | 0,053 ± 0,001 | 0,099 | 0,366 ± 0,005 |
+| NLGCL + filtre + MPT (λ = 0,25) | 0,051 ± 0,001 | 0,099 | 0,358 ± 0,007 |
 
-Les deux modèles appris battent nettement les références. Sur ce run, le terme contrastif de
-NLGCL ne gagne pas sur l'ablation LightGCN. Le filtre de risque fait chuter le NDCG brut,
-parce que beaucoup d'achats réels dépassent le plafond du client. En revanche, il est le
-meilleur sur les cibles compatibles avec ce plafond, c'est-à-dire ce qu'un conseil adapté
-peut retrouver.
+Les deux modèles appris battent nettement les références. **NLGCL et LightGCN sont à égalité** :
+l'écart (0,001) est plus petit que l'écart-type, et le gagnant change selon la graine. Le terme
+contrastif n'apporte donc rien sur ces données (288 actifs, 1 actif par client en médiane). Il
+ralentit aussi la convergence : meilleure époque 33 à 35 pour NLGCL contre 11 à 18 pour LightGCN.
+La limite de 80 époques a été choisie sur la validation (`python -m src.train.tune_nlgcl`) : à 30,
+NLGCL était coupé avant sa meilleure époque.
+
+Sans filtre, 77 % des suggestions du modèle dépassent le plafond du client ; avec le filtre, 0 %.
+Le filtre fait donc chuter le NDCG brut, parce que beaucoup d'achats réels dépassent ce plafond.
+En revanche, il est le meilleur sur les cibles compatibles avec le plafond, c'est-à-dire ce qu'un
+conseil adapté peut retrouver. La MPT ne baisse la variance que de 0,0003 de plus que le filtre seul.
+
+**Clients peu actifs** (NDCG@10, 3 graines) : sans historique, tous les classements renvoient la
+popularité (0,126). Avec 2 actifs ou moins (1 739 clients), NLGCL fait 0,149, autant que la
+popularité (0,147), alors que LightGCN fait 0,160 : c'est la principale limite du modèle.
 
 ## Réentraîner le modèle et reproduire les résultats
 
@@ -183,6 +199,9 @@ peut retrouver.
 |---|---|
 | `python -m src.train.run --risk-tolerance 1` | Run complet, avec en plus l'ablation du filtre tolérant (une classe au-dessus du plafond, pénalisée) |
 | `python -m src.eval.tune` | Choisit λ et le rétrécissement de μ sur la **validation** (`tuning/validation_grid.csv`, `tuning/selected.json`). Les valeurs retenues sont les défauts de `src.train.run` |
+| `python -m src.train.run --seeds 42 1 2` | Même run sur 3 graines, moyenne et écart-type de chaque métrique (`dataset/experiment-multi/metrics.json`) : ce sont les chiffres de la section Résultats |
+| `python -m src.train.tune_nlgcl --contrastive-weights 0.05 --temperatures 0.2` | Compare NLGCL et LightGCN sur la **validation** pour une grille de poids du contraste et de températures (`nlgcl_tuning/`). Ajoutez `--epochs 30` pour revoir pourquoi la limite est passée à 80 |
+| `python -m src.serve.benchmark_api` | Latence réelle de `/recommend` sur le serveur lancé (budget de 2 s ; `--check-deferred` mesure aussi `/explain`) |
 | `python -m src.eval.lambda_sweep` | Courbe pertinence / diversification sur le test pour chaque λ (`lambda_sweep/`) |
 | `python -m src.rerank.calibrate` | γ implicite des portefeuilles réels par niveau de risque (`gamma_calibration.json`) |
 | `python -m src.llm.evaluate_profiles` | Profil contre les vrais `riskLevel` (modèle local requis) |
