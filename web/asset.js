@@ -1,6 +1,6 @@
 // Asset page: price history over a chosen range, with the stats a reader checks first.
 const RANGES = [[1, "1A", "1Y"], [3, "3A", "3Y"], [5, "5A", "5Y"], [0, null, null]];
-const page = { asset: null, years: 3, recommendation: null, explanation: null, explaining: false, explanationError: null };
+const page = { asset: null, years: 3, recommendation: null, explanation: null, explanationRequested: false, explaining: false };
 
 function dateLabel(iso) {
   return new Date(iso).toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB", {
@@ -86,34 +86,46 @@ function storedRecommendation(params, isin) {
   if (!result || id !== result.recommendation_id || typeof view.session !== "string" || !Array.isArray(result.items)) return null;
   const index = result.items.findIndex((item) => item.isin === isin);
   return index < 0 ? null : { id, session: view.session, item: result.items[index], rank: index + 1,
-    rankingSource: result.ranking_source, ceiling: result.profile.ceiling };
+    rankingSource: result.ranking_source, ceiling: result.profile.ceiling, catalogSize: result.catalog_size };
 }
 
 async function requestExplanation() {
   const current = page.recommendation;
   if (!current || page.explaining) return;
-  page.explaining = true;
-  page.explanationError = null;
+  const language = LANG;
+  page.explanationRequested = true;
+  page.explaining = Number.isFinite(current.item.variance_change);
   renderWhy();
+  if (!page.explaining) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 22000);
   try {
     const response = await fetch("explain", {
-      method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(22000),
-      body: JSON.stringify({ recommendation_id: current.id, session_id: current.session, isin: current.item.isin }),
+      method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+      body: JSON.stringify({ recommendation_id: current.id, session_id: current.session, isin: current.item.isin, language }),
     });
-    if (response.status === 404) { page.explanationError = "why_explain_expired"; return; }
-    if (!response.ok) throw new Error(`explain ${response.status}`);
+    if (!response.ok) return;
     const explanation = await response.json();
-    const supported = explanation.source === "template" || (explanation.source === "llm" && explanation.status === "verified");
-    if (!supported || explanation.isin !== current.item.isin || typeof explanation.explanation !== "string") {
-      throw new Error("Unexpected explanation response");
+    if (explanation.source === "llm" && explanation.status === "verified" &&
+        explanation.isin === current.item.isin && explanation.language === language &&
+        typeof explanation.explanation === "string" && explanation.explanation.trim()) {
+      page.explanation = explanation;
     }
-    page.explanation = explanation;
   } catch (_) {
-    page.explanationError = "why_explain_error";
+    // The explanation from the displayed ranking remains available.
   } finally {
+    clearTimeout(timeout);
     page.explaining = false;
     renderWhy();
   }
+}
+
+function explanationReason({ item, rankingSource, catalogSize }) {
+  if (rankingSource === "portfolio_embeddings") return t("why_explain_portfolio");
+  if (Number.isInteger(item.popularity_rank) && Number.isInteger(catalogSize)) {
+    return t("why_explain_popularity_rank", { rank: fmt(item.popularity_rank), total: fmt(catalogSize) });
+  }
+  return t("why_popularity");
 }
 
 function renderWhy() {
@@ -122,28 +134,36 @@ function renderWhy() {
   if (!current) { box.hidden = true; return; }
   const { item, rankingSource, ceiling, rank } = current;
   const lines = [t("why_position", { rank })];
-  if (rankingSource === "popularity") lines.push(t("why_popularity"));
-  if (rankingSource === "portfolio_embeddings") lines.push(t("why_portfolio"));
-  const explanation = page.explanation;
-  if (!explanation) {
+  const change = Number.isFinite(item.variance_change) ? Number(item.variance_change.toFixed(4)) || 0 : null;
+  const delta = change === null ? null : `${change >= 0 ? "+" : ""}${fmt(change, 4)}`;
+  const explanation = page.explanation?.language === LANG ? page.explanation : null;
+  let text;
+  if (!page.explanationRequested) {
+    lines.push(t(rankingSource === "popularity" ? "why_popularity" : "why_portfolio"));
     lines.push(t("why_risk", { risk: item.risk_class, ceiling }));
-    if (Number.isFinite(item.variance_change)) {
-      const delta = Number(item.variance_change.toFixed(4)) || 0;
-      lines.push(t("why_var_change", { v: `${delta > 0 ? "+" : ""}${fmt(delta, 4)}` }));
+    if (delta !== null) lines.push(t("why_var_change", { v: delta }));
+  } else {
+    const reason = explanationReason(current);
+    const eligibility = t("why_explain_eligible", { risk: item.risk_class, ceiling });
+    if (explanation) {
+      text = `${reason} ${t("why_explain_cap", { ceiling })} ${explanation.explanation}`;
+    } else {
+      const impact = delta !== null ? t("why_explain_impact", { delta }) :
+        t(rankingSource === "popularity" ? "why_explain_add_holdings" : "why_explain_missing_prices");
+      text = `${reason} ${eligibility} ${impact}`;
     }
   }
-  const source = explanation ? (explanation.source === "llm" ? "why_source_llm" : "why_source_template") : "why_source_facts";
-  const expired = page.explanationError === "why_explain_expired";
-  const button = explanation || expired ? null : el("button", { class: "btn", type: "button", onclick: requestExplanation },
-    t(page.explaining ? "why_explaining" : "why_explain"));
-  if (button) button.disabled = page.explaining;
+  const source = explanation ? "why_source_llm" :
+    page.explanationRequested ? "why_source_template" : "why_source_facts";
+  const button = page.explanationRequested ? null :
+    el("button", { class: "btn", type: "button", onclick: requestExplanation }, t("why_explain"));
   const content = [
     el("h2", {}, t("why_title")),
     el("ul", {}, ...lines.map((line) => el("li", {}, line))),
-    explanation ? el("p", { lang: "fr" }, explanation.explanation) : null,
+    text ? el("p", { lang: LANG }, text) : null,
     el("p", { class: "footnote" }, t(source)),
     button,
-    page.explanationError ? el("p", { class: "footnote" }, t(page.explanationError)) : null,
+    page.explaining ? el("p", { class: "footnote" }, t("why_explaining")) : null,
   ];
   box.replaceChildren(...content.filter(Boolean));
   box.hidden = false;

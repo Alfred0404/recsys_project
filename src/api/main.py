@@ -23,7 +23,7 @@ import pandas as pd
 
 from src.data.asset_returns import drop_price_glitches
 from src.data.pea_etfs import concentration, exposure_after, load_pea
-from src.llm.explainer import ExplanationFacts, explain_suggestion
+from src.llm.explainer import ExplanationFacts, ExplanationLanguage, explain_suggestion
 from src.llm.profile import Profile, QUESTIONNAIRE, build_profile
 from src.llm.reflection import configured_generator, review_profile
 from src.serve.cache import TTLCache
@@ -66,6 +66,7 @@ class ExplanationRequest(BaseModel):
     recommendation_id: UUID
     isin: Isin
     session_id: UUID | None = None
+    language: ExplanationLanguage = "fr"
 
 
 class PeaExposureRequest(BaseModel):
@@ -197,10 +198,12 @@ def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
             raise HTTPException(status_code=404, detail="Recommendation item was not found in this session or has expired.")
         facts = entry[1][isin]
         if state.generator is None:
-            result = explain_suggestion(facts, None)
+            result = explain_suggestion(facts, None, payload.language)
         else:
-            result = await to_thread.run_sync(explain_suggestion, facts, state.generator, limiter=state.model_calls)
-        return {"isin": isin, **result}
+            result = await to_thread.run_sync(
+                explain_suggestion, facts, state.generator, payload.language, limiter=state.model_calls,
+            )
+        return {"isin": isin, "language": payload.language, **result}
 
     @app.post("/log_interaction", status_code=201)
     def log_interaction(payload: Interaction) -> dict:
