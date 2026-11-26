@@ -53,4 +53,4 @@ else
   fi
 fi
 
-echo "Done in $(( $(date +%s) - START )) s. Start the site with ./run.sh"
+echo "Done in $(( $(date +%s) - START )) s. Start the site with: bash run.sh"
