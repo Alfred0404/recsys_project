@@ -32,7 +32,7 @@ function sparkline(points, up) {
   const width = 150; const height = 44;
   const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, class: "spark", "aria-hidden": "true", preserveAspectRatio: "none" });
   if (points.length < 2) return svg;
-  const color = up ? "#3fd492" : "#ff5d52";
+  const color = up ? "#1F7A6F" : "#C8553D";
   const { x, y } = scale(points, width, height, { top: 4, bottom: 4, left: 1, right: 1 });
   const line = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
   svg.append(svgEl("path", { d: `${line}L${x(points.length - 1)},${height}L${x(0)},${height}Z`, fill: areaGradient(svg, color) }),
@@ -47,20 +47,20 @@ function lineChart(container, points, format) {
   const pad = { top: 16, bottom: 30, left: 4, right: 56 };
   const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, role: "img" });
   const up = points[points.length - 1][1] >= points[0][1];
-  const color = up ? "#3fd492" : "#ff5d52";
+  const color = up ? "#1F7A6F" : "#C8553D";
   const { x, y, min, max } = scale(points, width, height, pad);
 
   for (let k = 0; k <= 3; k += 1) {  // four quiet price levels on the right
     const value = min + ((max - min) * k) / 3;
-    svg.append(svgEl("line", { x1: pad.left, x2: width - pad.right, y1: y(value), y2: y(value), stroke: "rgba(255,255,255,.06)" }));
-    const label = svgEl("text", { x: width - pad.right + 10, y: y(value) + 4, fill: "#8a8a88", "font-size": 12 });
+    svg.append(svgEl("line", { x1: pad.left, x2: width - pad.right, y1: y(value), y2: y(value), stroke: "rgba(12,35,64,.08)" }));
+    const label = svgEl("text", { x: width - pad.right + 10, y: y(value) + 4, fill: "#5A7088", "font-size": 12 });
     label.textContent = format.price(value);
     svg.append(label);
   }
   const years = [...new Set(points.map((p) => p[0].slice(0, 4)))];
   for (const year of years.slice(1)) {  // a tick at each new year
     const i = points.findIndex((p) => p[0].startsWith(year));
-    const label = svgEl("text", { x: x(i), y: height - 8, fill: "#8a8a88", "font-size": 12, "text-anchor": "middle" });
+    const label = svgEl("text", { x: x(i), y: height - 8, fill: "#5A7088", "font-size": 12, "text-anchor": "middle" });
     label.textContent = year;
     svg.append(label);
   }
@@ -69,8 +69,8 @@ function lineChart(container, points, format) {
   svg.append(svgEl("path", { d: `${line}L${x(points.length - 1)},${height - pad.bottom}L${x(0)},${height - pad.bottom}Z`, fill: areaGradient(svg, color) }),
     svgEl("path", { d: line, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
 
-  const cross = svgEl("line", { y1: pad.top, y2: height - pad.bottom, stroke: "rgba(255,255,255,.35)", visibility: "hidden" });
-  const dot = svgEl("circle", { r: 4.5, fill: color, stroke: "#000", "stroke-width": 2, visibility: "hidden" });
+  const cross = svgEl("line", { y1: pad.top, y2: height - pad.bottom, stroke: "rgba(12,35,64,.35)", visibility: "hidden" });
+  const dot = svgEl("circle", { r: 4.5, fill: color, stroke: "#fff", "stroke-width": 2, visibility: "hidden" });
   svg.append(cross, dot);
   const tip = document.createElement("div");
   tip.className = "tip glass";

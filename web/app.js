@@ -255,7 +255,7 @@ function renderResults() {
     return el("a", { class: "row", href: `asset.html?isin=${encodeURIComponent(item.isin)}${rec}` },
       el("span", { class: "rank num" }, String(i + 1)),
       el("span", { class: "name" }, item.name, el("small", {}, item.isin)),
-      el("span", { class: "risk" }, el("b", { class: "num" }, `${item.risk_class}/7`), el("br"), t("risk")),
+      el("span", { class: "risk", "data-risk": String(item.risk_class) }, el("b", { class: "num" }, `${item.risk_class}/7`), el("br"), t("risk")),
       series ? sparkline(series.points, up) : el("span"),
       series ? el("span", { class: `change num ${up ? "up" : "down"}` }, pct(series.change),
         series.start && series.end ? el("small", {}, `${series.start} – ${series.end}`) : null) : el("span"));
@@ -283,25 +283,6 @@ function sendFeedback(event) {
   renderResults();
 }
 
-/* ---------- Hero preview: the real answer to the example query ---------- */
-
-async function renderPreview() {
-  const box = document.getElementById("preview-rows");
-  try {
-    const result = await api("recommend", { holdings: { GRS003003035: 1000 }, answers: { ...state.answers } });
-    const items = result.items.slice(0, 3);
-    const prices = await api(`prices?isins=${items.map((i) => i.isin).join(",")}&years=3`).catch(() => ({}));
-    box.replaceChildren(...items.map((item) => {
-      const series = prices[item.isin];
-      const up = series ? series.change >= 0 : true;
-      return el("div", { class: "preview-row" },
-        el("span", {}, el("b", {}, item.name), el("small", {}, `${item.isin} · ${item.risk_class}/7`)),
-        series ? sparkline(series.points, up) : el("span"),
-        el("span", { class: `change num ${up ? "up" : "down"}` }, series ? pct(series.change) : ""));
-    }));
-  } catch (_) { box.closest(".preview").hidden = true; }
-}
-
 /* ---------- Start ---------- */
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -314,7 +295,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   for (const mode of modes) mode.addEventListener("change", changeMode);
   changeMode();
-  renderPreview();
   const toggle = document.getElementById("toggle");
   toggle.addEventListener("click", () => {
     const panel = document.getElementById("options");
