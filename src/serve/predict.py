@@ -38,8 +38,10 @@ class Recommender:
         self.categories = assets.set_index("ISIN").get("assetCategory", pd.Series(dtype=str)).dropna().astype(str).to_dict()
 
     def catalog(self) -> list[dict]:
+        # popularity: 1 = most bought in training, so the demo can list well-known assets first.
+        rank = {int(index): position + 1 for position, index in enumerate(self.popular_order)}
         return [{"isin": isin, "name": self.names.get(isin, isin), "category": self.categories.get(isin),
-                 "risk_class": self.risk_classes.get(isin)} for isin in self.item_ids]
+                 "risk_class": self.risk_classes.get(isin), "popularity": rank[i]} for i, isin in enumerate(self.item_ids)]
 
     def predict(self, holdings: dict[str, float], profile: Profile, k: int = 10) -> dict:
         known = [isin for isin in holdings if isin in self.item_index]

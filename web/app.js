@@ -23,42 +23,39 @@ function load(key) {
 
 const state = {
   session: load("session") || uuid(), catalog: [], chips: new Map(), answers: Object.fromEntries(QUESTIONS.map((q) => [q, 1])),
-  years: 3, mode: "questionnaire", view: null, active: -1, suggestions: [], submission: 0, loading: false, error: null,
+  years: 3, mode: "questionnaire", view: null, active: -1, suggestions: [], category: null, submission: 0, loading: false, error: null,
 };
 store("session", state.session);
 
 const logEvent = (event) => api("log_interaction", { session_id: state.session, event }).catch(() => {});
 
 
-const normalize = (text) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+/* ---------- Step 1: find assets and add them to the portfolio ---------- */
 
-/* ---------- Search box: autocomplete assets into chips ---------- */
+const CATEGORIES = ["Stock", "Bond", "MTF"];
+const EXAMPLE_SIZE = 3;
 
-function fragmentStart(text) {
-  return Math.max(text.lastIndexOf(","), text.lastIndexOf(";")) + 1;
-}
+const query = () => document.getElementById("query").value.trim();
+const byPopularity = (assets) => [...assets].sort((a, b) => (a.popularity ?? Infinity) - (b.popularity ?? Infinity));
 
-function fragment() {
-  const text = document.getElementById("query").value;
-  return text.slice(fragmentStart(text)).trim();
-}
-
-function matches(query) {
-  if (!query.trim() || state.chips.size >= MAX_HOLDINGS) return [];
-  return searchAssets(state.catalog, query, { limit: SUGGESTIONS, exclude: new Set(state.chips.keys()) });
-}
-
-function highlighted(text, query) {
-  return highlightParts(text, query).map((p) => p.hit ? el("mark", {}, p.text) : p.text);
+// With an empty box the list shows the most held assets, so nobody has to guess a name first.
+function matches(text) {
+  if (state.chips.size >= MAX_HOLDINGS) return [];
+  const options = { limit: SUGGESTIONS, exclude: new Set(state.chips.keys()), category: state.category };
+  return text ? searchAssets(state.catalog, text, options) : searchAssets(byPopularity(state.catalog), "", options);
 }
 
 function exactAsset() {
-  const code = fragment().toUpperCase();
-  return state.catalog.find((asset) => asset.isin === code && (state.chips.has(code) || state.chips.size < MAX_HOLDINGS));
+  const code = query().toUpperCase();
+  return state.catalog.find((asset) => asset.isin === code && !state.chips.has(code) && state.chips.size < MAX_HOLDINGS);
+}
+
+function highlighted(text, words) {
+  return highlightParts(text, words).map((p) => p.hit ? el("mark", {}, p.text) : p.text);
 }
 
 function hideSuggest() {
-  document.getElementById("suggest").hidden = true;
+  document.getElementById("suggest-box").hidden = true;
   const input = document.getElementById("query");
   input.setAttribute("aria-expanded", "false");
   input.removeAttribute("aria-activedescendant");
@@ -67,48 +64,89 @@ function hideSuggest() {
 }
 
 function renderSuggest() {
+  const box = document.getElementById("suggest-box");
   const list = document.getElementById("suggest");
   const input = document.getElementById("query");
-  const query = fragment();
-  const found = matches(query);
-  const empty = query && !found.length && state.catalog.length > 0 && state.chips.size < MAX_HOLDINGS;
+  if (!state.catalog.length) { hideSuggest(); return; }
+  const text = query();
+  const found = matches(text);
   state.suggestions = found;
   if (state.active >= found.length) state.active = -1;
-  list.hidden = !found.length && !empty;
+  box.hidden = false;
   input.setAttribute("aria-expanded", String(found.length > 0));
-  if (empty) {
-    list.replaceChildren(el("li", { class: "none", role: "presentation" }, t("search_none", { q: query }),
-      el("a", { href: "assets.html" }, t("search_browse"))));
-    return;
-  }
+
+  // pointerdown + preventDefault keeps the focus in the box, so the list does not close on click
+  document.getElementById("suggest-tabs").replaceChildren(...[null, ...CATEGORIES].map((cat) => el("button", {
+    type: "button", class: "tab", "aria-pressed": String(state.category === cat),
+    onpointerdown: (e) => { e.preventDefault(); state.category = cat; state.active = -1; renderSuggest(); },
+  }, cat ? t(`cat_${cat}_pl`) : t("filter_all"))));
+
+  const head = document.getElementById("suggest-head");
+  if (state.chips.size >= MAX_HOLDINGS) head.textContent = t("search_full", { n: MAX_HOLDINGS });
+  else if (!found.length) head.textContent = t("search_none", { q: text });
+  else head.textContent = text ? t("search_results") : t("search_popular");
+
   list.replaceChildren(...found.map((asset, i) => el("li", {
     role: "option", id: `opt-${i}`, "aria-selected": String(i === state.active),
     onpointerdown: (e) => { e.preventDefault(); addChip(asset); },
-  }, el("span", { class: "sname" }, ...highlighted(asset.name, query)),
-  el("small", {}, [asset.isin, asset.category ? t(`cat_${asset.category}`) : "",
-    asset.risk_class ? `${asset.risk_class}/7` : ""].filter(Boolean).join(" · "))));
+  },
+  el("span", { class: "sname" }, ...highlighted(asset.name, text), el("small", {}, asset.isin)),
+  el("span", { class: "smeta" },
+    asset.category ? el("span", { class: "cat" }, t(`cat_${asset.category}`)) : null,
+    asset.risk_class ? el("span", { class: "risk-pill", "data-risk": String(asset.risk_class) }, `${t("risk")} ${asset.risk_class}/7`) : null,
+    el("span", { class: "add", "aria-hidden": "true" }, "+")))));
   if (state.active >= 0) input.setAttribute("aria-activedescendant", `opt-${state.active}`);
   else input.removeAttribute("aria-activedescendant");
 }
 
-function addChip(asset) {
-  if (!state.chips.has(asset.isin)) state.chips.set(asset.isin, { name: asset.name, amount: String(DEFAULT_AMOUNT) });
+function addChip(asset, { keepOpen = true } = {}) {
+  if (!state.chips.has(asset.isin) && state.chips.size < MAX_HOLDINGS) {
+    state.chips.set(asset.isin, { name: asset.name, category: asset.category, risk: asset.risk_class, amount: String(DEFAULT_AMOUNT) });
+  }
   const input = document.getElementById("query");
-  input.value = input.value.slice(0, fragmentStart(input.value)).replace(/[,;]\s*$/, "").trimEnd();
-  renderChips(); hideSuggest(); input.focus();
+  input.value = "";
+  state.active = -1;
+  if (state.error === "err_selection") showError(null);
+  renderChips();
+  if (keepOpen && document.activeElement === input) renderSuggest(); else hideSuggest();
+}
+
+function addExample() {
+  const picks = byPopularity(state.catalog).filter((a) => !state.chips.has(a.isin)).slice(0, EXAMPLE_SIZE);
+  for (const asset of picks) addChip(asset, { keepOpen: false });
 }
 
 function renderChips() {
-  document.getElementById("chips").replaceChildren(...Array.from(state.chips, ([isin, holding]) =>
-    el("span", { class: "chip glass" }, holding.name,
-      el("label", { class: "amount" }, el("input", {
-        type: "number", min: "0.01", max: "1000000000000000", step: "0.01", required: "",
-        value: holding.amount, "aria-label": t("amount", { name: holding.name }),
-        oninput: (event) => { holding.amount = event.target.value; },
-      }), "€"),
-      el("button", { type: "button", "aria-label": `${t("remove")} ${holding.name}`,
-        onclick: () => { state.chips.delete(isin); renderChips(); } }, "×"))));
+  const box = document.getElementById("chips");
+  if (!state.chips.size) {
+    box.replaceChildren(el("p", { class: "holdings-empty" }, t("holdings_empty")));
+    return;
+  }
+  const total = Array.from(state.chips.values()).reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+  const rows = Array.from(state.chips, ([isin, holding]) => el("div", { class: "holding" },
+    el("span", { class: "hname" }, holding.name,
+      el("small", {}, [isin, holding.category ? t(`cat_${holding.category}`) : "", holding.risk ? `${t("risk")} ${holding.risk}/7` : ""].filter(Boolean).join(" · "))),
+    el("label", { class: "amount" }, el("input", {
+      type: "number", min: "0.01", max: "1000000000000000", step: "0.01", required: "", inputmode: "decimal",
+      value: holding.amount, "aria-label": t("amount", { name: holding.name }),
+      oninput: (event) => { holding.amount = event.target.value; renderTotal(); },
+    }), "€"),
+    el("button", { type: "button", class: "remove", "aria-label": `${t("remove")} ${holding.name}`,
+      onclick: () => { state.chips.delete(isin); renderChips(); } }, "×")));
+  box.replaceChildren(
+    el("p", { class: "holdings-head" }, t("holdings_title", { n: state.chips.size }),
+      el("span", { id: "holdings-total", class: "num" }, t("holdings_total", { total: fmt(total, 0) }))),
+    ...rows,
+    el("button", { type: "button", class: "link-light clear", onclick: () => { state.chips.clear(); renderChips(); } }, t("holdings_clear")));
 }
+
+function renderTotal() {
+  const total = Array.from(state.chips.values()).reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+  const node = document.getElementById("holdings-total");
+  if (node) node.textContent = t("holdings_total", { total: fmt(total, 0) });
+}
+
+/* ---------- Step 2 and 3: profile and chart period ---------- */
 
 function renderOptions() {
   const selects = QUESTIONS.map((q) => {
@@ -117,12 +155,12 @@ function renderOptions() {
     select.value = String(state.answers[q]);
     return el("label", {}, t(`q_${q}`), select);
   });
+  document.getElementById("option-grid").replaceChildren(...selects);
+  document.getElementById("option-grid").hidden = state.mode !== "questionnaire";
   const years = el("select", { onchange: (e) => { state.years = Number(e.target.value); } },
     ...[1, 3, 5].map((n) => el("option", { value: String(n) }, t(n === 1 ? "years" : "years_plural", { n }))));
   years.value = String(state.years);
-  document.getElementById("option-grid").replaceChildren(
-    ...(state.mode === "questionnaire" ? selects : []), el("label", {}, t("chart_years"), years),
-  );
+  document.getElementById("years-box").replaceChildren(el("span", {}, t("chart_years")), years);
 }
 
 /* ---------- Request ---------- */
@@ -178,9 +216,11 @@ async function addPrices(view, submission) {
 async function submit(event) {
   event.preventDefault();
   if (state.loading) return;
-  const asset = exactAsset() || matches(fragment())[0];  // submit takes the best match instead of failing
-  if (asset) addChip(asset);
-  if (document.getElementById("query").value.trim()) {
+  if (query()) {  // text left in the box: take the best match instead of failing
+    const asset = exactAsset() || matches(query())[0];
+    if (asset) addChip(asset, { keepOpen: false });
+  }
+  if (query()) {
     showError("err_selection");
     return;
   }
@@ -308,21 +348,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   for (const mode of modes) mode.addEventListener("change", changeMode);
   changeMode();
-  const toggle = document.getElementById("toggle");
-  toggle.addEventListener("click", () => {
-    const panel = document.getElementById("options");
-    const open = panel.classList.toggle("open");
-    panel.inert = !open;  // closed options stay out of the tab order
-    toggle.setAttribute("aria-expanded", String(open));
-  });
+  renderChips();
   const input = document.getElementById("query");
   document.getElementById("form").addEventListener("submit", submit);
+  document.getElementById("example").addEventListener("click", addExample);
   input.addEventListener("input", () => {
     state.active = -1;
     if (state.error === "err_selection") showError(null);
     renderSuggest();
   });
   input.addEventListener("focus", renderSuggest);
+  input.addEventListener("click", renderSuggest);  // reopen after Escape without leaving the box
   input.addEventListener("blur", hideSuggest);
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -333,9 +369,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const step = e.key === "ArrowDown" ? 1 : -1;
       state.active = state.active < 0 ? (step === 1 ? 0 : n - 1) : (state.active + step + n) % n;
       renderSuggest();
-    } else if (e.key === "Enter" && input.value.trim()) {
-      e.preventDefault();
-      const asset = exactAsset() || state.suggestions[state.active] || state.suggestions[0];
+    } else if (e.key === "Enter" && (query() || state.active >= 0)) {
+      e.preventDefault();  // Enter in the box adds an asset; it never submits the form
+      const asset = state.suggestions[state.active] || exactAsset() || (query() ? state.suggestions[0] : null);
       if (asset) addChip(asset);
       else { showError("err_selection"); renderSuggest(); }
     } else if (e.key === "Escape") {

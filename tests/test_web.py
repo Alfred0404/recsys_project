@@ -44,6 +44,7 @@ def test_catalogue_lists_every_asset_with_its_risk_class(site):
     catalog = {a["isin"]: a for a in site.get("/assets").json()}
     assert list(catalog) == IDS
     assert catalog["B"]["risk_class"] == 3 and catalog["B"]["name"] == "Bond"
+    assert sorted(a["popularity"] for a in catalog.values()) == list(range(1, len(IDS) + 1))  # 1 = most held
 
 
 def test_prices_give_the_trend_over_the_chosen_window(site):
