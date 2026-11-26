@@ -23,6 +23,9 @@ from src.graph.build import build_graph
 from src.models.nlgcl import NLGCL
 
 
+DEFAULT_TEMPERATURE = 0.2
+
+
 class NegativeSampler:
     """Uniformly sample the complement of each user's known positives."""
 
@@ -74,15 +77,18 @@ class Experiment:
     t2: pd.Timestamp
 
     @classmethod
-    def from_transactions(cls, transactions: pd.DataFrame, t1=None, t2=None):
+    def from_transactions(cls, transactions: pd.DataFrame, t1=None, t2=None, *, validation_only=False):
+        """In validation-only mode, derive the usual cutoffs and discard future purchases."""
         buys = transactions.loc[transactions["transactionType"] == "Buy", COLS].drop_duplicates()
         if buys.empty:
             raise ValueError("No purchases found; check the FAR-Trans input tables.")
         d1, d2 = default_cutoffs(buys)
         t1 = pd.Timestamp(t1) if t1 is not None else d1
         t2 = pd.Timestamp(t2) if t2 is not None else d2
+        if validation_only:
+            buys = buys[buys["timestamp"] < t2]
         train, validation, test = temporal_split(buys, t1, t2)
-        if any(frame.empty for frame in (train, validation, test)):
+        if train.empty or validation.empty or (test.empty and not validation_only):
             raise ValueError("Each temporal split needs purchases; check data and cutoffs.")
         check_no_leak(train, validation, test)
         edge_index, user_index, item_index = build_graph(train)
@@ -154,6 +160,7 @@ def train_model(experiment: Experiment, name: str, contrastive_weight: float, ar
         dim=args.dim,
         n_layers=args.layers,
         contrastive_weight=contrastive_weight,
+        temperature=getattr(args, "temperature", DEFAULT_TEMPERATURE),
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     users, positive = experiment.edge_index
@@ -291,6 +298,7 @@ def run_seed(args, tx, experiment):
             "learning_rate": args.lr,
             "layers": args.layers,
             "contrastive_weight": args.contrastive_weight,
+            "temperature": getattr(args, "temperature", DEFAULT_TEMPERATURE),
             "steps_per_epoch": args.steps,
             "evaluation_bpr_pairs": val_pairs,
             "nlgcl_best_epoch": selected,
@@ -413,6 +421,7 @@ def main():
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--contrastive-weight", type=float, default=0.05)
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     parser.add_argument("--mpt-weight", type=float, default=0.25,
                         help="MPT weight lambda, chosen on validation by python -m src.eval.tune")
     parser.add_argument("--mu-shrinkage", type=float, default=1.0,
@@ -436,8 +445,9 @@ def main():
         args.out = Path("dataset/experiment-multi" if args.seeds is not None else "dataset/experiment")
     if min(args.epochs, args.patience, args.dim, args.layers, args.steps, args.threads) < 1:
         parser.error("Epochs, patience, dimension, layers, steps and threads must be positive.")
-    if not np.isfinite([args.lr, args.contrastive_weight]).all() or args.lr <= 0 or args.contrastive_weight <= 0:
-        parser.error("Learning rate and contrastive weight must be finite and positive.")
+    training_parameters = (args.lr, args.contrastive_weight, args.temperature)
+    if not all(np.isfinite(value) and value > 0 for value in training_parameters):
+        parser.error("Learning rate, contrastive weight and temperature must be finite and positive.")
     if not 0 <= args.mpt_weight <= 1 or not 0 <= args.mu_shrinkage <= 1:
         parser.error("MPT weight and expected-return shrinkage must be between zero and one.")
     if not 0 <= args.risk_tolerance <= 6 or not np.isfinite(args.risk_penalty) or args.risk_penalty < 0:
