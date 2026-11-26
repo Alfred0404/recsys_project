@@ -3,7 +3,7 @@ from collections import Counter
 import pytest
 
 from src.llm.profile import QUESTIONNAIRE
-from src.llm.reflection import infer_profile, review_profile
+from src.llm.reflection import infer_profile, review_profile, text_rules
 from src.llm.text_benchmark import DRAFT_FIXTURE, THOMAS_FIXTURE, load_cases
 
 TEAM_FIXTURES = {name: THOMAS_FIXTURE.with_name(f"{name}_profiles.json") for name in ("alfred", "ethan", "nicolas", "thomas")}
@@ -27,12 +27,26 @@ def test_successful_reflection_uses_actual_text_and_records_actor_separately():
     assert all(statement in prompt for prompt in prompts)
 
 
-def test_explicit_capital_preservation_overrides_model_acceptance():
+@pytest.mark.parametrize("statement", (
+    "Je dois préserver le capital.",
+    "I need my capital in three months and can accept no loss.",
+    "I can’t afford any losses.",
+    "I must preserve my capital.",
+))
+def test_explicit_capital_preservation_overrides_model_acceptance(statement):
     responses = iter(({"risk_level": 4}, {"risk_level": 4, "accepted": True}))
-    result = review_profile({}, {}, "Je dois préserver le capital.", lambda _: next(responses))
+    result = review_profile({}, {}, statement, lambda _: next(responses))
     assert result["profile"]["risk_level"] == 1
     assert result["status"] == "rules_fallback"
     assert result["actor_profile"]["risk_level"] == 4
+
+
+@pytest.mark.parametrize("statement", (
+    "I cannot accept any losses above 20%.",
+    "I do not need to preserve my capital.",
+))
+def test_english_guard_requires_explicit_capital_protection(statement):
+    assert text_rules(statement) == (1, 4)
 
 
 def test_complete_questionnaire_retains_precedence_and_invalid_actor_abstains():
