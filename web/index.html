@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Complément</title>
+<title>Spread by Masdaq</title>
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -24,6 +24,8 @@
 </header>
 
 <main id="top">
+  <div class="hero-stage">
+  <canvas id="spread" aria-hidden="true"></canvas>
   <section class="hero">
     <div class="hero-copy">
       <h1 data-i18n="hero"></h1>
@@ -44,19 +46,21 @@
       <figcaption id="graph-caption"></figcaption>
     </figure>
   </section>
+  </div>
 
   <section class="facts" aria-labelledby="facts-title">
     <h2 class="visually-hidden" id="facts-title" data-i18n="facts_title"></h2>
     <dl class="facts-grid">
-      <div><dt class="num">388 048</dt><dd data-i18n="fact_tx"></dd></div>
-      <div><dt class="num">29 090</dt><dd data-i18n="fact_clients"></dd></div>
-      <div><dt class="num">320</dt><dd data-i18n="fact_assets"></dd></div>
-      <div><dt class="num">1</dt><dd data-i18n="fact_median"></dd></div>
+      <div><dt class="num" data-n="388048">388 048</dt><dd data-i18n="fact_tx"></dd></div>
+      <div><dt class="num" data-n="29090">29 090</dt><dd data-i18n="fact_clients"></dd></div>
+      <div><dt class="num" data-n="320">320</dt><dd data-i18n="fact_assets"></dd></div>
+      <div><dt class="num" data-n="1">1</dt><dd data-i18n="fact_median"></dd></div>
       <div><dt class="num" data-i18n="fact_top_v"></dt><dd data-i18n="fact_top"></dd></div>
     </dl>
   </section>
 
   <section class="method" id="method">
+    <p class="eyebrow" data-i18n="nav_method"></p>
     <h2 data-i18n="method_title"></h2>
     <p class="lede" data-i18n="method_lede"></p>
     <ol class="steps">
@@ -68,24 +72,25 @@
   </section>
 
   <section class="evidence" id="evidence">
+    <p class="eyebrow" data-i18n="nav_results"></p>
     <h2 data-i18n="ev_title"></h2>
     <p class="lede" data-i18n="ev_lede"></p>
     <div class="ev-grid">
       <figure class="card bars">
         <figcaption><b data-i18n="ev_bars_title"></b><span data-i18n="ev_bars_sub"></span></figcaption>
-        <div class="bar" style="--w: 7%; --c: var(--neutral)"><span data-i18n="m_random"></span><i></i><b class="num">0,015</b></div>
-        <div class="bar" style="--w: 84%; --c: var(--neutral)"><span data-i18n="m_popular"></span><i></i><b class="num">0,166</b></div>
-        <div class="bar" style="--w: 96%; --c: var(--r1)"><span data-i18n="m_nlgcl"></span><i></i><b class="num">0,189</b></div>
-        <div class="bar" style="--w: 100%; --c: var(--r2)"><span data-i18n="m_lightgcn"></span><i></i><b class="num">0,197</b></div>
+        <div class="bar" style="--w: 7%; --c: var(--neutral)"><span data-i18n="m_random"></span><i></i><b class="num" data-n="0.015" data-d="3">0,015</b></div>
+        <div class="bar" style="--w: 84%; --c: var(--neutral)"><span data-i18n="m_popular"></span><i></i><b class="num" data-n="0.166" data-d="3">0,166</b></div>
+        <div class="bar" style="--w: 96%; --c: var(--r1)"><span data-i18n="m_nlgcl"></span><i></i><b class="num" data-n="0.189" data-d="3">0,189</b></div>
+        <div class="bar" style="--w: 100%; --c: var(--r2)"><span data-i18n="m_lightgcn"></span><i></i><b class="num" data-n="0.197" data-d="3">0,197</b></div>
         <p data-i18n="ev_bars_note"></p>
       </figure>
       <div class="ev-side">
         <div class="card stat-big">
-          <p class="num big"><span class="hot">76 %</span> <span class="arrow" aria-hidden="true">→</span> <span class="cool">0 %</span></p>
+          <p class="num big"><span class="hot" data-pct="0.76">76 %</span> <span class="arrow" aria-hidden="true">→</span> <span class="cool" data-pct="0">0 %</span></p>
           <p data-i18n="ev_violation"></p>
         </div>
         <div class="card stat-big">
-          <p class="num big">0,217 <span class="arrow" aria-hidden="true">→</span> 0,356</p>
+          <p class="num big"><span data-n="0.217" data-d="3">0,217</span> <span class="arrow" aria-hidden="true">→</span> <span data-n="0.356" data-d="3">0,356</span></p>
           <p data-i18n="ev_suitable"></p>
         </div>
       </div>
@@ -102,6 +107,7 @@
 
   <section class="ask" id="ask">
     <div class="ask-panel">
+      <p class="eyebrow" data-i18n="eyebrow_demo"></p>
       <h2 data-i18n="ask_title"></h2>
       <form id="form" class="ask-form" autocomplete="off">
         <section class="ask-step" aria-labelledby="step-assets">
@@ -171,5 +177,6 @@
 <script src="search.js"></script>
 <script src="landing.js"></script>
 <script src="app.js"></script>
+<script src="hero.js"></script>
 </body>
 </html>

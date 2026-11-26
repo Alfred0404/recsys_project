@@ -1,5 +1,7 @@
 // Brand name: change it here only, it updates every page.
-const BRAND = "Complément";
+const BRAND = "Spread by Masdaq";
+const BRAND_NAME = "Spread";
+const BRAND_BY = "by masdaq";
 
 const STRINGS = {
   fr: {
@@ -41,6 +43,7 @@ const STRINGS = {
     lim_2: "Sans historique, la suggestion vient de la popularité. Avec deux actifs ou moins, NLGCL ne fait pas mieux que les plus achetés.",
     lim_3: "Le reclassement par la variance (MPT) réduit très peu le risque par rapport au filtre seul.",
     team_title: "L’équipe",
+    eyebrow_demo: "Démo",
     role_ethan: "Chef de projet, évaluation", role_alfred: "Données et site",
     role_nicolas: "Modèle de graphe et reclassement", role_thomas: "Modèle de langage et API",
     footer_data: "Données FAR-Trans, Université de Glasgow (CC BY 4.0). Outil éducatif, pas un conseil en investissement.",
@@ -49,7 +52,7 @@ const STRINGS = {
     catalog_search: "Rechercher un actif par nom ou ISIN", filter_all: "Tous",
     cat_Stock_pl: "Actions", cat_Bond_pl: "Obligations", cat_MTF_pl: "Fonds",
     more: "Afficher plus", catalog_none: "Aucun actif ne correspond à « {q} ».", back_assets: "Retour aux actifs",
-    hero_sub: "Complément apprend des achats de 29 090 vrais investisseurs quel actif va avec ceux que vous détenez, puis écarte tout ce qui dépasse votre niveau de risque.",
+    hero_sub: "Spread apprend des achats de 29 090 vrais investisseurs quel actif va avec ceux que vous détenez, puis écarte tout ce qui dépasse votre niveau de risque.",
     cta_try: "Essayer la démo",
     preview_query: "National Bank of Greece · 1 000 €",
     preview_foot: "Suggestions réelles du modèle et cours historiques",
@@ -158,6 +161,7 @@ const STRINGS = {
     lim_2: "With no history, the suggestion comes from popularity. With two assets or fewer, NLGCL does no better than the most bought.",
     lim_3: "Re-ranking by variance (MPT) lowers risk very little compared with the filter alone.",
     team_title: "The team",
+    eyebrow_demo: "Demo",
     role_ethan: "Project lead, evaluation", role_alfred: "Data and website",
     role_nicolas: "Graph model and re-ranking", role_thomas: "Language model and API",
     footer_data: "FAR-Trans data, University of Glasgow (CC BY 4.0). Educational tool, not investment advice.",
@@ -166,7 +170,7 @@ const STRINGS = {
     catalog_search: "Search an asset by name or ISIN", filter_all: "All",
     cat_Stock_pl: "Stocks", cat_Bond_pl: "Bonds", cat_MTF_pl: "Funds",
     more: "Show more", catalog_none: "No asset matches “{q}”.", back_assets: "Back to assets",
-    hero_sub: "Complément learns from the purchases of 29,090 real investors which asset goes with the ones you hold, then removes anything above your risk level.",
+    hero_sub: "Spread learns from the purchases of 29,090 real investors which asset goes with the ones you hold, then removes anything above your risk level.",
     cta_try: "Try the demo",
     preview_query: "National Bank of Greece · €1,000",
     preview_foot: "Real model suggestions and historical prices",
@@ -265,7 +269,11 @@ function applyI18n(root = document) {
   root.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
   root.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
   root.querySelectorAll("[data-i18n-label]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nLabel)); });
-  root.querySelectorAll("[data-brand]").forEach((el) => { el.textContent = BRAND; });
+  root.querySelectorAll("[data-brand]").forEach((el) => {
+    const by = document.createElement("small");
+    by.textContent = BRAND_BY;
+    el.replaceChildren(BRAND_NAME, by);
+  });
   const toggle = document.querySelector(".lang");
   if (toggle) toggle.textContent = LANG === "fr" ? "EN" : "FR";
 }
