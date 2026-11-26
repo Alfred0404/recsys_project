@@ -1,9 +1,23 @@
+import json
+import runpy
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.llm import reflection
+from src.llm import profile_benchmark, reflection
 from src.llm.evaluate_profiles import evaluate_sample, holdout_cohort, portfolio_facts, stratified_sample
+
+
+def test_synthetic_benchmark_keeps_the_previous_cli_working(monkeypatch, capsys):
+    monkeypatch.setattr(profile_benchmark, "configured_generator", lambda: lambda _: {})
+
+    profile_benchmark.main()
+    expected = json.loads(capsys.readouterr().out)
+    runpy.run_module("src.eval.profile_benchmark", run_name="__main__")
+
+    assert json.loads(capsys.readouterr().out) == expected
+    assert expected["cases"] == expected["final_matches"] == expected["fallbacks"] == 9
 
 
 def test_holdout_uses_first_observed_questionnaire_and_latest_prior_bank_estimate():
