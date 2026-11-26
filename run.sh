@@ -10,6 +10,10 @@ fi
 PY=.venv/bin/python
 
 echo "Installing dependencies..."
+# On Linux, pip's default torch wheel bundles CUDA (~2.5 GB). The CPU wheel is enough here.
+if [ "$(uname -s)" = "Linux" ] && ! "$PY" -c "import torch" 2>/dev/null; then
+  "$PY" -m pip install -q "torch>=2.2,<3" --index-url https://download.pytorch.org/whl/cpu
+fi
 "$PY" -m pip install -q -r requirements.txt
 "$PY" -m src.data.download
 [ -f dataset/processed/close_prices.parquet ] || "$PY" -m src.data.load_and_check

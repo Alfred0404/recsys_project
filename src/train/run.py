@@ -415,7 +415,7 @@ def main():
     parser.add_argument("--processed-dir", type=Path, default=Path("dataset/processed"))
     parser.add_argument("--out", type=Path,
                         help="Output directory (defaults to dataset/experiment or dataset/experiment-multi)")
-    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--dim", type=int, default=32)
     parser.add_argument("--layers", type=int, default=2)

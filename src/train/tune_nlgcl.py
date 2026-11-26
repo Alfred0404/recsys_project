@@ -53,7 +53,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--t1", help="Manual train cutoff (before validation)")
     parser.add_argument("--t2", help="Manual test cutoff (before the held-out period)")
-    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--dim", type=int, default=32)
     parser.add_argument("--layers", type=int, default=2)

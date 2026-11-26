@@ -200,7 +200,7 @@
   document.addEventListener("DOMContentLoaded", splitHeadline);
   document.addEventListener("langchange", splitHeadline);
 
-  // Static figures follow the page language (0,189 in French, 0.189 in English).
+  // Static figures follow the page language (0,192 in French, 0.192 in English).
   function formatFigures() {
     document.querySelectorAll("[data-n]").forEach((node) => {
       if (!node.dataset.counting) node.textContent = fmt(Number(node.dataset.n), Number(node.dataset.d || 0));
