@@ -24,8 +24,19 @@ async function loadPicks() {
   if (!pick.results.length) throw new Error("No sample recommendation");
 }
 
-function riskPill(risk) {
-  return el("span", { class: "risk-pill num", "data-risk": String(risk) }, `${t("risk")} ${risk}/7`);
+// Plain words for the 1-7 risk scale, so a newcomer never has to decode "7/7".
+const RISK_WORD = { 1: "very_low", 2: "very_low", 3: "low", 4: "medium", 5: "fairly_high", 6: "high", 7: "very_high" };
+const riskWord = (risk) => t(`pick_risk_${RISK_WORD[risk] || "medium"}`);
+
+// Catalogue names are in capitals ("NATIONAL BANK OF GREECE"): soften them, keep short tokens like SA or S.A.
+const SMALL = new Set(["of", "and", "the", "de", "&"]);
+function niceName(name) {
+  if (name !== name.toUpperCase()) return name;
+  return name.toLowerCase().split(" ").map((word, i) => {
+    if (i && SMALL.has(word)) return word;
+    if (/^(s\.?a\.?|plc|sa|ae|a\/k|\(cr\))$/.test(word)) return word.toUpperCase();
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(" ");
 }
 
 function renderPickTabs() {
@@ -48,47 +59,39 @@ function renderPick() {
   const entry = pick.results[pick.index];
   if (!entry) return;
   const { scenario, holdings, result } = entry;
-  const [top, ...rest] = result.items;
+  const top = result.items[0];
   const asset = pick.catalog.get(top.isin);
   const before = top.volatility_before;
   const after = top.volatility_after;
-  const hasVol = Number.isFinite(before) && Number.isFinite(after) && before > 0;
+  const hasVol = Number.isFinite(before) && Number.isFinite(after) && before > 0 && after < before;
 
-  const held = el("ul", { class: "pick-held" }, ...holdings.map((isin) => {
-    const a = pick.catalog.get(isin);
-    return el("li", {}, el("span", { class: "pick-held-name" }, a.name), a.risk_class ? riskPill(a.risk_class) : null);
-  }));
+  const held = holdings.map((isin) => pick.catalog.get(isin));
+  const risks = held.map((a) => a.risk_class).filter(Boolean);
+  const lo = Math.min(...risks), hi = Math.max(...risks);
+  const heldRisk = !risks.length ? null : RISK_WORD[lo] === RISK_WORD[hi]
+    ? t("pick_held_same", { n: held.length, risk: riskWord(hi) })
+    : t("pick_held_range", { lo: riskWord(lo), hi: riskWord(hi) });
 
-  const metric = hasVol ? el("div", { class: "pick-metric" },
-    el("p", { class: "pick-metric-head" }, el("span", {}, t("pick_vol")),
-      el("b", { class: "pick-drop num" }, pct(after / before - 1))),
-    el("div", { class: "pick-vol" },
-      el("span", { class: "pick-vol-label" }, t("pick_today")),
-      el("i", { style: "--w: 100%" }), el("b", { class: "num" }, pct(before, 1, false))),
-    el("div", { class: "pick-vol after" },
-      el("span", { class: "pick-vol-label" }, t("pick_with")),
-      el("i", { style: `--w: ${((after / before) * 100).toFixed(1)}%` }), el("b", { class: "num" }, pct(after, 1, false))),
-    el("p", { class: "pick-note" }, t("pick_alloc"))) : null;
-
-  const href = (isin) => `asset.html?isin=${encodeURIComponent(isin)}`;
+  const href = `asset.html?isin=${encodeURIComponent(top.isin)}`;
   const body = document.getElementById("pick-body");
   body.setAttribute("aria-labelledby", `pick-tab-${pick.index}`);
   body.replaceChildren(el("div", { class: "pick-view" },
-    el("p", { class: "pick-kicker" }, t("pick_hold")),
-    held,
-    el("p", { class: "pick-kicker accent" }, el("span", { class: "pick-arrow", "aria-hidden": "true" }, "↓"), t("pick_adds")),
-    el("a", { class: "pick-top", href: href(top.isin) },
-      el("span", { class: "pick-top-name" }, top.name),
-      el("span", { class: "pick-top-meta" },
-        riskPill(top.risk_class),
-        asset?.category ? el("span", { class: "pick-cat" }, t(`cat_${asset.category}`)) : null,
-        el("span", { class: "pick-fit" }, t("pick_fit", { ceiling: result.profile.ceiling })))),
-    metric,
-    rest.length ? el("p", { class: "pick-more" }, t("pick_more", { n: rest.length }),
-      ...rest.slice(0, 2).flatMap((item, i) => [i ? " · " : " ", el("a", { href: href(item.isin) }, item.name)])) : null,
+    el("div", { class: "pick-step" },
+      el("p", { class: "pick-label" }, t(`pick_who_${scenario.key}`)),
+      el("p", { class: "pick-held" }, held.map((a) => niceName(a.name)).join(" · ")),
+      heldRisk ? el("p", { class: "pick-sub", "data-risk": String(hi) }, heldRisk) : null),
+    el("div", { class: "pick-step" },
+      el("p", { class: "pick-label" }, t("pick_adds")),
+      el("a", { class: "pick-top", href },
+        el("span", { class: "pick-top-name" }, niceName(top.name)),
+        el("span", { class: "pick-sub", "data-risk": String(top.risk_class) },
+          [asset?.category ? t(`cat_${asset.category}`) : null, t("pick_risk", { risk: riskWord(top.risk_class) })].filter(Boolean).join(" · ")))),
+    hasVol ? el("div", { class: "pick-result" },
+      el("p", { class: "pick-big" }, el("b", { class: "num" }, pct(1 - after / before, 0, false)), " ", t("pick_less")),
+      el("p", { class: "pick-expert num" }, t("pick_expert", { before: pct(before, 1, false), after: pct(after, 1, false) }))) : null,
     el("div", { class: "pick-actions" },
-      el("button", { type: "button", class: "btn primary", onclick: () => openPick(entry, true) }, t("pick_see", { n: result.items.length })),
-      el("button", { type: "button", class: "btn ghost", onclick: () => openPick(entry, false) }, t("pick_mine")))));
+      el("button", { type: "button", class: "btn primary", onclick: () => openPick(entry, true) }, t("pick_see")),
+      el("button", { type: "button", class: "pick-link", onclick: () => openPick(entry, false) }, t("pick_mine"), " →"))));
 
   const card = document.getElementById("pick-card");
   card.dataset.ceiling = String(result.profile.ceiling);

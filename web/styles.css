@@ -92,7 +92,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -.02
 .disclaimer { margin: 0; font-size: 13px; color: var(--muted); }
 
 .pick-card { margin: 0; background: var(--surface); border-radius: 28px; padding: 22px 26px 20px; border: 1px solid var(--line);
-  box-shadow: 0 40px 80px -48px rgba(12, 35, 64, .45); min-height: 520px; display: grid; grid-template-rows: auto 1fr auto; gap: 14px; }
+  box-shadow: 0 40px 80px -48px rgba(12, 35, 64, .45); min-height: 470px; display: grid; grid-template-rows: auto 1fr auto; gap: 14px; }
 .pick-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .pick-live { margin: 0; display: inline-flex; align-items: center; gap: 8px; font: 600 12px var(--sans); letter-spacing: .06em;
   text-transform: uppercase; color: var(--muted); }
@@ -112,37 +112,28 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -.02
 .pick-card:not(.ready) .pick-body { border-radius: 16px; background: linear-gradient(90deg, var(--ground) 0%, #F7F9F9 50%, var(--ground) 100%);
   background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
 @keyframes shimmer { to { background-position: -200% 0; } }
-.pick-view { display: grid; gap: 10px; animation: pick-in .3s cubic-bezier(.2, .8, .2, 1); }
+.pick-view { display: grid; gap: 22px; align-content: start; animation: pick-in .3s cubic-bezier(.2, .8, .2, 1); }
 @keyframes pick-in { from { opacity: 0; transform: translateY(8px); } }
-.pick-kicker { margin: 0; font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
-  display: flex; align-items: center; gap: 6px; }
-.pick-kicker.accent { color: var(--r1); margin-top: 4px; }
-.pick-arrow { font-size: 15px; }
-.pick-held { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.pick-held li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--ink-2);
-  padding: 6px 0; border-bottom: 1px solid var(--line); }
-.pick-held li:last-child { border-bottom: 0; }
-.pick-held-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pick-held .risk-pill, .pick-top .risk-pill { font-size: 12px; }
-.pick-top { display: grid; gap: 8px; text-decoration: none; padding: 14px 16px; border-radius: 16px; border: 1.5px solid var(--r1);
+.pick-step { display: grid; gap: 6px; }
+.pick-label { margin: 0; font-size: 14px; color: var(--muted); }
+.pick-held { margin: 0; font: 550 17px/1.35 var(--display); letter-spacing: -.01em; }
+.pick-sub { margin: 0; display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--ink-2); }
+.pick-sub::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--neutral)); flex: none; }
+.pick-sub[data-risk="1"] { --c: var(--r1); } .pick-sub[data-risk="2"] { --c: var(--r2); } .pick-sub[data-risk="3"] { --c: var(--r3); }
+.pick-sub[data-risk="4"] { --c: var(--r4); } .pick-sub[data-risk="5"] { --c: var(--r5); } .pick-sub[data-risk="6"] { --c: var(--r6); }
+.pick-sub[data-risk="7"] { --c: var(--r7); }
+.pick-top { display: grid; gap: 6px; text-decoration: none; padding: 16px 18px; border-radius: 16px; border: 1.5px solid var(--r1);
   background: color-mix(in srgb, var(--r1) 6%, var(--surface)); transition: background .2s, transform .2s; }
 .pick-top:hover { background: color-mix(in srgb, var(--r1) 11%, var(--surface)); transform: translateY(-1px); }
-.pick-top-name { font: 600 19px/1.2 var(--display); letter-spacing: -.02em; color: var(--ink); }
-.pick-top-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
-.pick-cat { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
-.pick-fit::before { content: "✓ "; color: var(--up); font-weight: 700; }
-.pick-metric { display: grid; gap: 6px; padding-top: 4px; }
-.pick-metric-head { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--ink-2); }
-.pick-drop { font-size: 30px; font-weight: 650; line-height: 1; letter-spacing: -.035em; color: var(--up); }
-.pick-vol { display: grid; grid-template-columns: 96px minmax(0, 1fr) 56px; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
-.pick-vol i { display: block; height: 10px; border-radius: 6px; width: var(--w); background: var(--neutral); }
-.pick-vol.after i { background: var(--up); animation: grow .9s .15s backwards cubic-bezier(.2, .8, .2, 1); transform-origin: left; }
-@keyframes grow { from { transform: scaleX(1.25); opacity: .5; } }
-.pick-vol b { text-align: right; color: var(--ink); }
-.pick-note { margin: 0; font-size: 12px; color: var(--muted); }
-.pick-more { margin: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pick-more a { color: var(--ink-2); }
-.pick-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.pick-top-name { font: 600 21px/1.2 var(--display); letter-spacing: -.02em; color: var(--ink); }
+.pick-result { display: grid; gap: 4px; }
+.pick-big { margin: 0; font-size: 17px; line-height: 1.3; color: var(--ink); }
+.pick-big b { font-size: 40px; font-weight: 650; letter-spacing: -.04em; color: var(--up); line-height: 1; }
+.pick-expert { margin: 0; font-size: 12.5px; color: var(--muted); }
+.pick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.pick-link { background: none; border: 0; padding: 8px 0; min-height: 44px; font: 550 15px var(--sans); color: var(--ink); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.pick-link:hover { text-decoration-color: var(--ink); }
 .pick-card figcaption { font-size: 12px; line-height: 1.5; color: var(--muted); }
 
 /* ---------- Hero stage: a night scene where the spread of possible paths fans out ---------- */
@@ -455,7 +446,7 @@ footer.site a { color: var(--ink-2); }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .pick-dot, .pick-view, .pick-vol.after i, .pick-card:not(.ready) .pick-body { animation: none; }
+  .pick-dot, .pick-view, .pick-card:not(.ready) .pick-body { animation: none; }
   .hero h1 .word, .hero-copy > :not(h1), .hero-stage .pick-card { animation: none; }
   .hero-stage .hero-copy { transform: none; opacity: 1; }
   .js-reveal .reveal { opacity: 1; transform: none; }
