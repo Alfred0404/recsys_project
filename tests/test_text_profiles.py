@@ -6,7 +6,7 @@ from src.llm.profile import QUESTIONNAIRE
 from src.llm.reflection import infer_profile, review_profile
 from src.llm.text_benchmark import DRAFT_FIXTURE, THOMAS_FIXTURE, load_cases
 
-TEAM_FIXTURES = {name: THOMAS_FIXTURE.with_name(f"{name}_profiles.json") for name in ("alfred", "nicolas", "thomas")}
+TEAM_FIXTURES = {name: THOMAS_FIXTURE.with_name(f"{name}_profiles.json") for name in ("alfred", "ethan", "nicolas", "thomas")}
 
 
 def test_successful_reflection_uses_actual_text_and_records_actor_separately():
@@ -69,4 +69,11 @@ def test_team_contribution_has_ten_cases_covering_every_level(author):
 
 
 def test_team_contributions_do_not_collide():
-    assert len(load_cases(list(TEAM_FIXTURES.values()))) == 30
+    assert len(load_cases(list(TEAM_FIXTURES.values()))) == 40
+
+
+def test_english_set_mirrors_every_french_contribution_and_passes_team_check():
+    english = [THOMAS_FIXTURE.parent / "en" / path.name for path in TEAM_FIXTURES.values()]
+    originals = {row["id"]: row for row in load_cases(list(TEAM_FIXTURES.values()))}
+    translated = load_cases(english, require_team=True)
+    assert {row["id"]: row["risk_level"] for row in translated} == {key: row["risk_level"] for key, row in originals.items()}

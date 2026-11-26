@@ -1,0 +1,62 @@
+[
+  {
+    "id": "nicolas-01",
+    "author": "nicolas",
+    "text": "This amount has to repay the balance of my mortgage in eighteen months. People keep talking to me about crypto, but I cannot reach the deadline with less than I have today.",
+    "risk_level": 1
+  },
+  {
+    "id": "nicolas-02",
+    "author": "nicolas",
+    "text": "I am 72 and this is most of what I have saved. If it fell by even 3% I would sell everything, so I only want things that barely move.",
+    "risk_level": 1
+  },
+  {
+    "id": "nicolas-03",
+    "author": "nicolas",
+    "text": "I am cautious by nature. Over six years, my adviser says I can put in a little equity, but I do not want to go above 25% of the total.",
+    "risk_level": 2
+  },
+  {
+    "id": "nicolas-04",
+    "author": "nicolas",
+    "text": "In March 2020 I lost 20% and sold everything at the bottom. My horizon is five years and I do not want to go through that again: small drops yes, a big fall no.",
+    "risk_level": 2
+  },
+  {
+    "id": "nicolas-05",
+    "author": "nicolas",
+    "text": "Goal: beat inflation by 2 or 3% a year over five years. Maximum acceptable loss over the year: 8%.",
+    "risk_level": 2
+  },
+  {
+    "id": "nicolas-06",
+    "author": "nicolas",
+    "text": "We have two stable salaries and an emergency fund already invested separately. This money is for in eight to ten years, ideally 60% equities and 40% bonds.",
+    "risk_level": 3
+  },
+  {
+    "id": "nicolas-07",
+    "author": "nicolas",
+    "text": "Medium term, around seven years. I could sit through a 20% fall without panicking, but I would not put everything into equities.",
+    "risk_level": 3
+  },
+  {
+    "id": "nicolas-08",
+    "author": "nicolas",
+    "text": "I like taking risks, but this is half of my wealth and I plan to use it in six years to open a shop.",
+    "risk_level": 3
+  },
+  {
+    "id": "nicolas-09",
+    "author": "nicolas",
+    "text": "I am a 30-year-old engineer with no debt and an emergency fund on the side. I want 100% equities for twenty-five years and I almost never look at prices.",
+    "risk_level": 4
+  },
+  {
+    "id": "nicolas-10",
+    "author": "nicolas",
+    "text": "My tech stocks lost 40% in 2022 and I bought more. I will not touch this money for twenty years and I do not need any income from it.",
+    "risk_level": 4
+  }
+]

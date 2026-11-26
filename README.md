@@ -95,6 +95,20 @@ Pour mesurer les contributions de l'équipe, passez les quatre fichiers JSON à
 `python -m src.llm.text_benchmark --require-team`. La commande attend dix profils
 étiquetés par membre et exclut les brouillons synthétiques.
 
+Les profils sont disponibles en deux versions, avec les mêmes `id` et les mêmes
+niveaux : le français d'origine (`src/llm/fixtures/<prénom>_profiles.json`) et une
+traduction anglaise (`src/llm/fixtures/en/<prénom>_profiles.json`). **Pour une
+démo ou un rapport en anglais, utilisez les fichiers de `en/`** :
+
+```bash
+python -m src.llm.text_benchmark --require-team src/llm/fixtures/en/alfred_profiles.json src/llm/fixtures/en/ethan_profiles.json src/llm/fixtures/en/nicolas_profiles.json src/llm/fixtures/en/thomas_profiles.json
+```
+
+Comparez les deux runs pour voir l'effet de la langue : les règles par mots-clés
+sont écrites en français, donc le texte anglais repose surtout sur le modèle.
+Si vous modifiez un profil, mettez à jour les deux versions : un test vérifie
+qu'elles gardent les mêmes `id` et niveaux.
+
 **Choix documentés**
 
 - **μ rétréci vers la moyenne (δ = 1)**. Le rendement attendu sur 60 jours est trop bruité : avec μ brut, augmenter λ dégradait à la fois le NDCG, la diversité et la variance. Avec δ = 1, le score MPT ne classe plus que par la variance ajoutée au portefeuille. λ = 0,25 et δ = 1 sont choisis sur la validation (NDCG au moins égal à 95 % du filtre seul, puis plus forte baisse de variance).

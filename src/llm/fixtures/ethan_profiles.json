@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ethan-01",
+    "author": "ethan",
+    "text": "Je pars m'installer à l'étranger dans un an et cet argent servira à payer mon premier loyer et mon dépôt de garantie. Je ne peux pas risquer de le voir baisser avant mon départ.",
+    "risk_level": 1
+  },
+  {
+    "id": "ethan-02",
+    "author": "ethan",
+    "text": "Mes parents m'ont donné cette somme pour mes études et je dois la garder disponible. Même si les actions m'attirent, je préfère ne prendre aucun risque et conserver chaque euro.",
+    "risk_level": 1
+  },
+  {
+    "id": "ethan-03",
+    "author": "ethan",
+    "text": "I have a visa application coming up and I must be able to show these savings in full in six months. Whatever happens, the balance cannot go down.",
+    "risk_level": 1
+  },
+  {
+    "id": "ethan-04",
+    "author": "ethan",
+    "text": "Je commence à travailler dans deux ans et je veux que ma petite épargne grossisse un peu plus qu'un livret. Je suis d'accord pour une baisse de 5 %, mais pas davantage.",
+    "risk_level": 2
+  },
+  {
+    "id": "ethan-05",
+    "author": "ethan",
+    "text": "Mon stage rapporte un peu d'argent et je vise un projet dans cinq ans. J'accepte de voir ma valeur varier de quelques pour cent, mais je ne dormirais pas bien avec une perte de 15 %.",
+    "risk_level": 2
+  },
+  {
+    "id": "ethan-06",
+    "author": "ethan",
+    "text": "Mon objectif est d'acheter ma première voiture d'occasion dans cinq ou six ans. Un mélange d'obligations et d'un peu d'actions me convient, avec des pertes limitées si possible.",
+    "risk_level": 2
+  },
+  {
+    "id": "ethan-07",
+    "author": "ethan",
+    "text": "Je prévois un apport pour un logement dans sept ans. Je veux de la croissance avec une moitié du capital en actions, et je supporterais une baisse de 20 % si elle ne dure pas trop longtemps.",
+    "risk_level": 3
+  },
+  {
+    "id": "ethan-08",
+    "author": "ethan",
+    "text": "I am a student and I do not need this money before eight years. I am comfortable with real ups and downs, but I would want some safer assets as a cushion in case of a crash.",
+    "risk_level": 3
+  },
+  {
+    "id": "ethan-09",
+    "author": "ethan",
+    "text": "J'ai 22 ans, je n'ai aucune charge et je n'utiliserai pas cet argent avant mes 45 ans. Je veux seulement des actions, je peux perdre la moitié de la valeur sur une année et je continuerai à investir.",
+    "risk_level": 4
+  },
+  {
+    "id": "ethan-10",
+    "author": "ethan",
+    "text": "Mon but est la croissance maximale sur vingt ans, sans retrait prévu. Les marchés qui chutent me permettent d'acheter moins cher, et je ne vendrai pas par peur.",
+    "risk_level": 4
+  }
+]
