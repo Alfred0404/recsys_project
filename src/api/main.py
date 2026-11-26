@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 from src.data.asset_returns import drop_price_glitches
+from src.data.pea_etfs import concentration, exposure_after, load_pea
 from src.llm.explainer import ExplanationFacts, explain_suggestion
 from src.llm.profile import Profile, QUESTIONNAIRE, build_profile
 from src.llm.reflection import configured_generator, review_profile
@@ -65,6 +66,12 @@ class ExplanationRequest(BaseModel):
     recommendation_id: UUID
     isin: Isin
     session_id: UUID | None = None
+
+
+class PeaExposureRequest(BaseModel):
+    holdings: dict[Isin, Amount] = Field(default_factory=dict, max_length=19)
+    candidate: Isin
+    share: float = Field(default=0.10, gt=0, le=0.5)
 
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
@@ -250,6 +257,28 @@ def create_app(model_path: Path | None = None, finance_dir: Path | None = None,
             "risk_class": recommender.risk_classes.get(isin),
             "category": text("assetCategory"), "subcategory": text("assetSubCategory"), "sector": text("sector"),
             "prices": [[day.strftime("%Y-%m-%d"), float(price)] for day, price in series.items()],
+        }
+
+    pea_etfs, pea_countries = load_pea()
+    pea_isins = set(pea_etfs["isin"])
+
+    @app.get("/pea/etfs")
+    def pea_list() -> list[dict]:
+        """The 19 PEA-eligible ETFs of the country exposure view (independent of the model)."""
+        return [{"isin": row.isin, "name": row.name, "ticker": row.ticker} for row in pea_etfs.itertuples(index=False)]
+
+    @app.post("/pea/exposure")
+    def pea_exposure(payload: PeaExposureRequest) -> dict:
+        """Country exposure before and after moving `share` of the PEA portfolio into `candidate`."""
+        holdings = {isin.upper(): amount for isin, amount in payload.holdings.items()}
+        candidate = payload.candidate.upper()
+        if candidate not in pea_isins or holdings.keys() - pea_isins:
+            raise HTTPException(status_code=422, detail="Unknown PEA ETF.")
+        table = exposure_after(holdings, candidate, pea_countries, payload.share)
+        return {
+            "rows": [{"country": country, "before": row["Avant"], "after": row["Après"]} for country, row in table.iterrows()],
+            "before": concentration(table["Avant"]) if holdings else None,
+            "after": concentration(table["Après"]),
         }
 
     if WEB_DIR.is_dir():  # mounted last so every API route above keeps priority

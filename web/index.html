@@ -159,6 +159,30 @@
 
   <section class="results" id="results" hidden aria-live="polite"></section>
 
+  <section class="pea" id="pea">
+    <p class="eyebrow">PEA</p>
+    <h2 data-i18n="pea_title"></h2>
+    <p class="lede" data-i18n="pea_lede"></p>
+    <div class="pea-grid">
+      <div class="card pea-controls">
+        <label class="pea-field"><span data-i18n="pea_held"></span>
+          <span class="pea-add"><select id="pea-pick" data-i18n-label="pea_held"></select>
+          <button class="btn ghost" type="button" id="pea-add" data-i18n="pea_add"></button></span>
+        </label>
+        <div class="pea-held" id="pea-held"></div>
+        <label class="pea-field"><span data-i18n="pea_candidate"></span><select id="pea-candidate"></select></label>
+        <label class="pea-field"><span><span data-i18n="pea_share"></span> : <b class="num" id="pea-share-value"></b></span>
+          <input type="range" id="pea-share" min="5" max="50" step="5" value="10"></label>
+      </div>
+      <div class="card pea-chart" aria-live="polite">
+        <p class="pea-legend"><span class="before" data-i18n="pea_before"></span><span class="after" data-i18n="pea_after"></span></p>
+        <div class="pea-bars" id="pea-bars"></div>
+        <div class="pea-facts" id="pea-facts"></div>
+        <p class="pea-note" data-i18n="pea_note"></p>
+      </div>
+    </div>
+  </section>
+
   <section class="team" id="team">
     <h2 data-i18n="team_title"></h2>
     <ul>
@@ -177,6 +201,7 @@
 <script src="search.js"></script>
 <script src="landing.js"></script>
 <script src="app.js"></script>
+<script src="pea.js"></script>
 <script src="hero.js"></script>
 </body>
 </html>

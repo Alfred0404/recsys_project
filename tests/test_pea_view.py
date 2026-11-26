@@ -1,8 +1,7 @@
 import pandas as pd
 import pytest
 
-from app.pea_view import concentration, exposure_after
-from src.data.pea_etfs import UNKNOWN_COUNTRY, load_pea
+from src.data.pea_etfs import UNKNOWN_COUNTRY, concentration, exposure_after, load_pea
 
 COUNTRIES = pd.DataFrame({
     "isin": ["US", "US", "FR", "WORLD", "WORLD"],
