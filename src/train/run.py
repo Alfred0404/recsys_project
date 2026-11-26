@@ -9,6 +9,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
@@ -255,13 +256,9 @@ def cohort_metrics(experiment: Experiment, rankings: dict) -> dict:
     return result
 
 
-def run(args):
+def run_seed(args, tx, experiment):
     start = time.perf_counter()
-    torch.set_num_threads(args.threads)
-    tx = pd.read_parquet(args.processed_dir / "transactions.parquet")
-    experiment = Experiment.from_transactions(tx, args.t1, args.t2)
-    print(f"Train cutoff {experiment.t1.isoformat()}, test cutoff {experiment.t2.isoformat()}", flush=True)
-    print(test_statistics(experiment), flush=True)
+    print(f"Seed {args.seed}", flush=True)
     args.out.mkdir(parents=True, exist_ok=True)
     nlgcl, loss, selected, val_pairs = train_model(experiment, "NLGCL", args.contrastive_weight, args)
     lightgcn, ablation_loss, ablation_selected, _ = train_model(experiment, "LightGCN", 0.0, args)
@@ -338,12 +335,76 @@ def run(args):
     (args.out / "metrics.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps(summary["test_metrics"], indent=2), flush=True)
     print(f"Experiment complete in {summary['elapsed_seconds']:.1f}s. Outputs: {args.out}", flush=True)
+    return summary
+
+
+def metric_statistics(values):
+    """Describe the variation across the seeds supplied for this experiment."""
+    return {"mean": float(np.mean(values)), "std": float(np.std(values))}
+
+
+def aggregate_ranking_metrics(results, section):
+    return {
+        ranker: {
+            metric: metric_statistics([result[section][ranker][metric] for result in results])
+            for metric in ("ndcg@10", "recall@20")
+        }
+        for ranker in results[0][section]
+    }
+
+
+def run(args):
+    torch.set_num_threads(args.threads)
+    tx = pd.read_parquet(args.processed_dir / "transactions.parquet")
+    experiment = Experiment.from_transactions(tx, args.t1, args.t2)
+    print(f"Train cutoff {experiment.t1.isoformat()}, test cutoff {experiment.t2.isoformat()}", flush=True)
+    print(test_statistics(experiment), flush=True)
+    if args.seeds is None:
+        return run_seed(args, tx, experiment)
+
+    args.out.mkdir(parents=True, exist_ok=True)
+    # Keep each batch together. Publish the report only after its artifacts are in place.
+    with TemporaryDirectory(prefix=".batch-", dir=args.out) as temp:
+        staging = Path(temp)
+        batch = staging / staging.name.lstrip(".")
+        results = []
+        runs = []
+        for seed in args.seeds:
+            seed_dir = Path(f"seed-{seed}")
+            seed_args = argparse.Namespace(**(vars(args) | {"seed": seed, "out": batch / seed_dir}))
+            results.append(run_seed(seed_args, tx, experiment))
+            runs.append({"seed": seed, "metrics": (Path(batch.name) / seed_dir / "metrics.json").as_posix()})
+
+        summary = {
+            "seeds": args.seeds,
+            "runs": runs,
+            "cutoffs": results[0]["cutoffs"],
+            "counts": results[0]["counts"],
+            "test_metrics": aggregate_ranking_metrics(results, "test_metrics"),
+            "cohort_ndcg@10": {
+                cohort: {
+                    ranker: metric_statistics([result["cohort_ndcg@10"][cohort][ranker] for result in results])
+                    for ranker in metrics
+                    if ranker != "users"
+                }
+                for cohort, metrics in results[0]["cohort_ndcg@10"].items()
+            },
+        }
+        if "suitable_target_metrics" in results[0]:
+            summary["suitable_target_metrics"] = aggregate_ranking_metrics(results, "suitable_target_metrics")
+        report = staging / "metrics.json"
+        report.write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+        batch.rename(args.out / batch.name)
+        report.replace(args.out / report.name)
+    print(f"Metrics across seeds {args.seeds}: {args.out / 'metrics.json'}", flush=True)
+    return summary
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--processed-dir", type=Path, default=Path("dataset/processed"))
-    parser.add_argument("--out", type=Path, default=Path("dataset/experiment"))
+    parser.add_argument("--out", type=Path,
+                        help="Output directory (defaults to dataset/experiment or dataset/experiment-multi)")
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--dim", type=int, default=32)
@@ -360,11 +421,19 @@ def main():
                         help="Classes above the ceiling allowed in the penalized risk ablation (0 disables it)")
     parser.add_argument("--risk-penalty", type=float, default=0.5,
                         help="Normalized relevance lost per class above the ceiling")
-    parser.add_argument("--seed", type=int, default=42)
+    seed_options = parser.add_mutually_exclusive_group()
+    seed_options.add_argument("--seed", type=int, default=42, help="Seed for a single run")
+    seed_options.add_argument("--seeds", type=int, nargs="+",
+                              help="Run the same experiment with each seed and summarize mean and standard deviation")
     parser.add_argument("--t1", help="Manual train cutoff (before validation)")
     parser.add_argument("--t2", help="Manual test cutoff")
     parser.add_argument("--skip-finance", action="store_true", help="Skip the financial ablation and serving snapshot")
     args = parser.parse_args()
+    seeds = args.seeds if args.seeds is not None else [args.seed]
+    if len(set(seeds)) != len(seeds) or any(not 0 <= seed < 2**64 for seed in seeds):
+        parser.error("Seeds must be distinct integers in [0, 2**64).")
+    if args.out is None:
+        args.out = Path("dataset/experiment-multi" if args.seeds is not None else "dataset/experiment")
     if min(args.epochs, args.patience, args.dim, args.layers, args.steps, args.threads) < 1:
         parser.error("Epochs, patience, dimension, layers, steps and threads must be positive.")
     if not np.isfinite([args.lr, args.contrastive_weight]).all() or args.lr <= 0 or args.contrastive_weight <= 0:

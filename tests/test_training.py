@@ -1,9 +1,12 @@
+import json
+import sys
+
 import numpy as np
 import pandas as pd
 
 from src.eval import finance
 from src.eval.ranking import ordered_isins, rank_embeddings
-from src.train.run import Experiment, NegativeSampler
+from src.train.run import Experiment, NegativeSampler, main
 
 
 def test_negatives_exclude_known_assets_and_skip_users_without_candidates():
@@ -15,6 +18,54 @@ def test_negatives_exclude_known_assets_and_skip_users_without_candidates():
     assert all(value in {0, 2, 3} for value in result[[0, 3]])
     assert result[[4, 5]].tolist() == [-1, -1]
     assert not sampler.eligible[[4, 5]].any()
+
+
+def test_multiseed_cli_aggregates_runs_without_replacing_the_single_run(monkeypatch, tmp_path):
+    data = pd.DataFrame(
+        [
+            ("warm", "A", "2022-01-01"),
+            ("other", "B", "2022-01-01"),
+            ("third", "C", "2022-01-01"),
+            ("fourth", "D", "2022-01-01"),
+            ("warm", "B", "2022-02-01"),
+            ("warm", "C", "2022-03-01"),
+            ("other", "D", "2022-03-01"),
+        ],
+        columns=["customerID", "ISIN", "timestamp"],
+    ).assign(transactionType="Buy")
+    data["timestamp"] = pd.to_datetime(data["timestamp"])
+    processed = tmp_path / "dataset" / "processed"
+    processed.mkdir(parents=True)
+    data.to_parquet(processed / "transactions.parquet")
+    monkeypatch.chdir(tmp_path)
+    command = [
+        "src.train.run", "--epochs", "1", "--threads", "1", "--skip-finance",
+        "--t1", "2022-02-01", "--t2", "2022-03-01",
+    ]
+
+    monkeypatch.setattr(sys, "argv", command + ["--seed", "21"])
+    main()
+    single_path = tmp_path / "dataset" / "experiment" / "metrics.json"
+    single = single_path.read_bytes()
+
+    monkeypatch.setattr(sys, "argv", command + ["--seeds", "21", "22"])
+    main()
+    multi = tmp_path / "dataset" / "experiment-multi"
+    aggregate = json.loads((multi / "metrics.json").read_text(encoding="utf-8"))
+    assert aggregate["seeds"] == [21, 22]
+    run_paths = [multi / run["metrics"] for run in aggregate["runs"]]
+    reports = [json.loads(path.read_text(encoding="utf-8")) for path in run_paths]
+    assert [report["seed"] for report in reports] == aggregate["seeds"]
+    assert reports[0]["test_metrics"] == json.loads(single)["test_metrics"]
+    assert all((path.parent / "model.npz").is_file() for path in run_paths)
+    assert all((path.parent / "loss.csv").is_file() for path in run_paths)
+    for ranker in ("nlgcl", "lightgcn"):
+        for metric in ("ndcg@10", "recall@20"):
+            scores = [report["test_metrics"][ranker][metric] for report in reports]
+            assert aggregate["test_metrics"][ranker][metric] == {
+                "mean": float(np.mean(scores)), "std": float(np.std(scores)),
+            }
+    assert single_path.read_bytes() == single
 
 
 def test_test_only_assets_and_users_never_enter_the_training_graph():
