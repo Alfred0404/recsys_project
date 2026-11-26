@@ -1,128 +1,146 @@
-// Hero graph: every dot is a real catalogue asset, stacked in its risk class (1-7).
-// Client-to-asset links are illustrative. The slider moves the risk ceiling live.
-const GRAPH = { width: 600, height: 440, base: 392, top: 132, gap: 8.6, perRow: 8, clients: 12 };
-const RISK_COLORS = ["#2B6CB0", "#2A9D8F", "#6FA35A", "#D9A033", "#E07A3F", "#C8553D", "#8E2C48"];
+// Hero card: a real recommendation, computed live by the API for three sample portfolios.
+// Only the portfolios and profiles are fixed here; every name and figure comes from the model.
+const PICK_SCENARIOS = [
+  { key: "prudent", level: 0, holdings: ["GRS001003037", "GRS260333000", "GRS015003007"] },
+  { key: "balanced", level: 1, holdings: ["GRS395363005", "GRS213213002", "GRS087003000"] },
+  { key: "dynamic", level: 2, holdings: ["GRS343313003", "GRS393503008", "GRF000022001"] },
+];
+const PICK_QUESTIONS = ["horizon", "goal", "loss", "experience"];
+const PICK_ROTATE_MS = 7000;
 
-const graph = { assets: [], edges: [], svg: null, ceiling: 4 };
+const pick = { catalog: new Map(), results: [], index: 0, timer: 0, auto: true, paused: false };
 
-function laneX(k) {
-  return 30 + (k - 0.5) * ((GRAPH.width - 30) / 7);
-}
-
-function seeded(seed) {
-  let s = seed;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-}
-
-function buildGraph(catalog) {
-  const byClass = new Map();
-  for (const asset of catalog) {
-    const k = Number(asset.risk_class);
-    if (k >= 1 && k <= 7) byClass.set(k, [...(byClass.get(k) || []), asset]);
-  }
-  const maxRows = Math.floor((GRAPH.base - GRAPH.top) / GRAPH.gap);
-  const width = (GRAPH.perRow - 1) * GRAPH.gap;
-  const dots = [];
-  for (let k = 1; k <= 7; k += 1) {
-    const list = (byClass.get(k) || []).slice(0, maxRows * GRAPH.perRow);
-    list.forEach((asset, i) => {
-      const row = Math.floor(i / GRAPH.perRow);
-      const col = i % GRAPH.perRow;
-      dots.push({ k, row, name: asset.name, x: laneX(k) - width / 2 + col * GRAPH.gap, y: GRAPH.base - row * GRAPH.gap });
+async function loadPicks() {
+  const catalog = await api("assets");
+  pick.catalog = new Map(catalog.map((asset) => [asset.isin, asset]));
+  pick.results = await Promise.all(PICK_SCENARIOS.map(async (scenario) => {
+    const holdings = scenario.holdings.filter((isin) => pick.catalog.has(isin));
+    const result = await api("recommend", {
+      holdings: Object.fromEntries(holdings.map((isin) => [isin, 1000])),
+      answers: Object.fromEntries(PICK_QUESTIONS.map((q) => [q, scenario.level])),
     });
-  }
-  const rnd = seeded(11);
-  const edges = [];
-  for (let c = 0; c < GRAPH.clients; c += 1) {
-    const cx = 60 + c * ((GRAPH.width - 90) / (GRAPH.clients - 1));
-    for (let m = 0; m < 3 && dots.length; m += 1) edges.push({ cx, dot: dots[Math.floor(rnd() * dots.length)] });
-  }
-  return { dots, edges, total: catalog.length };
+    return { scenario, holdings, result };
+  }));
+  pick.results = pick.results.filter((entry) => entry.holdings.length && entry.result.items.length);
+  if (!pick.results.length) throw new Error("No sample recommendation");
 }
 
-function drawGraph(data) {
-  const box = document.getElementById("graph");
-  const svg = svgEl("svg", { viewBox: `0 0 ${GRAPH.width} ${GRAPH.height}`, role: "img" });
-  const shade = svgEl("rect", { class: "g-shade", y: GRAPH.top - 18, height: GRAPH.base - GRAPH.top + 30, rx: 10 });
-  svg.append(shade);
-
-  const clientsY = 34;
-  const label = (x, y, key, anchor = "start") => {
-    const node = svgEl("text", { x, y, class: "g-label", "text-anchor": anchor, "data-key": key });
-    svg.append(node);
-    return node;
-  };
-  label(0, 14, "graph_clients");
-
-  data.edges.forEach((edge, i) => {
-    const d = edge.dot;
-    edge.node = svgEl("path", {
-      class: "g-edge", d: `M${edge.cx} ${clientsY + 6} C ${edge.cx} ${clientsY + 70}, ${d.x} ${d.y - 90}, ${d.x} ${d.y}`,
-      pathLength: 1, style: `--delay: ${(i * 0.025).toFixed(3)}s`,
-    });
-    svg.append(edge.node);
-  });
-  const clientXs = [...new Set(data.edges.map((e) => e.cx))];
-  clientXs.forEach((x, i) => svg.append(svgEl("circle", { class: "g-client", cx: x, cy: clientsY, r: 6.5, style: `--delay: ${(i * 0.04).toFixed(2)}s` })));
-
-  data.dots.forEach((dot) => {
-    dot.node = svgEl("circle", {
-      class: "g-dot", cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: 3.1, fill: RISK_COLORS[dot.k - 1],
-      style: `--delay: ${(0.35 + dot.row * 0.035 + dot.k * 0.02).toFixed(3)}s`,
-    });
-    const title = svgEl("title");
-    title.textContent = dot.name;
-    dot.node.append(title);
-    svg.append(dot.node);
-  });
-
-  for (let k = 1; k <= 7; k += 1) {
-    const text = svgEl("text", { x: laneX(k), y: GRAPH.height - 18, class: "g-lane num", "text-anchor": "middle", fill: RISK_COLORS[k - 1] });
-    text.textContent = String(k);
-    const lane = data.dots.filter((dot) => dot.k === k);
-    const top = Math.min(GRAPH.base, ...lane.map((dot) => dot.y));
-    const count = svgEl("text", { x: laneX(k), y: top - 10, class: "g-count num", "text-anchor": "middle" });
-    count.textContent = String(lane.length);
-    svg.append(text, count);
-  }
-  label(GRAPH.width / 2, GRAPH.height - 1, "graph_axis", "middle");
-
-  const line = svgEl("line", { class: "g-ceiling", y1: GRAPH.top - 24, y2: GRAPH.base + 14 });
-  svg.append(line);
-  box.replaceChildren(svg);
-  Object.assign(graph, { svg, shade, line, data });
-  requestAnimationFrame(() => box.classList.add("ready"));
+function riskPill(risk) {
+  return el("span", { class: "risk-pill num", "data-risk": String(risk) }, `${t("risk")} ${risk}/7`);
 }
 
-function updateCeiling() {
-  if (!graph.svg) return;
-  const k = graph.ceiling;
-  const x = k >= 7 ? GRAPH.width : (laneX(k) + laneX(k + 1)) / 2;
-  graph.line.setAttribute("x1", x); graph.line.setAttribute("x2", x);
-  graph.line.style.opacity = k >= 7 ? 0 : 1;
-  graph.shade.setAttribute("x", x); graph.shade.setAttribute("width", Math.max(0, GRAPH.width - x));
-  let kept = 0;
-  for (const dot of graph.data.dots) {
-    const out = dot.k > k;
-    dot.node.classList.toggle("out", out);
-    if (!out) kept += 1;
+function renderPickTabs() {
+  const tabs = document.getElementById("pick-tabs");
+  tabs.replaceChildren(...pick.results.map((entry, i) => el("button", {
+    type: "button", role: "tab", class: "pick-tab", id: `pick-tab-${i}`, "aria-controls": "pick-body",
+    "aria-selected": String(i === pick.index), tabindex: i === pick.index ? "0" : "-1",
+    onclick: () => { pick.auto = false; showPick(i); },
+    onkeydown: (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      const n = pick.results.length;
+      pick.auto = false;
+      showPick((pick.index + (event.key === "ArrowRight" ? 1 : -1) + n) % n);
+      document.getElementById(`pick-tab-${pick.index}`).focus();
+    },
+  }, t(`pick_${entry.scenario.key}`))));
+}
+
+function renderPick() {
+  const entry = pick.results[pick.index];
+  if (!entry) return;
+  const { scenario, holdings, result } = entry;
+  const [top, ...rest] = result.items;
+  const asset = pick.catalog.get(top.isin);
+  const before = top.volatility_before;
+  const after = top.volatility_after;
+  const hasVol = Number.isFinite(before) && Number.isFinite(after) && before > 0;
+
+  const held = el("ul", { class: "pick-held" }, ...holdings.map((isin) => {
+    const a = pick.catalog.get(isin);
+    return el("li", {}, el("span", { class: "pick-held-name" }, a.name), a.risk_class ? riskPill(a.risk_class) : null);
+  }));
+
+  const metric = hasVol ? el("div", { class: "pick-metric" },
+    el("p", { class: "pick-metric-head" }, el("span", {}, t("pick_vol")),
+      el("b", { class: "pick-drop num" }, pct(after / before - 1))),
+    el("div", { class: "pick-vol" },
+      el("span", { class: "pick-vol-label" }, t("pick_today")),
+      el("i", { style: "--w: 100%" }), el("b", { class: "num" }, pct(before, 1, false))),
+    el("div", { class: "pick-vol after" },
+      el("span", { class: "pick-vol-label" }, t("pick_with")),
+      el("i", { style: `--w: ${((after / before) * 100).toFixed(1)}%` }), el("b", { class: "num" }, pct(after, 1, false))),
+    el("p", { class: "pick-note" }, t("pick_alloc"))) : null;
+
+  const href = (isin) => `asset.html?isin=${encodeURIComponent(isin)}`;
+  const body = document.getElementById("pick-body");
+  body.setAttribute("aria-labelledby", `pick-tab-${pick.index}`);
+  body.replaceChildren(el("div", { class: "pick-view" },
+    el("p", { class: "pick-kicker" }, t("pick_hold")),
+    held,
+    el("p", { class: "pick-kicker accent" }, el("span", { class: "pick-arrow", "aria-hidden": "true" }, "↓"), t("pick_adds")),
+    el("a", { class: "pick-top", href: href(top.isin) },
+      el("span", { class: "pick-top-name" }, top.name),
+      el("span", { class: "pick-top-meta" },
+        riskPill(top.risk_class),
+        asset?.category ? el("span", { class: "pick-cat" }, t(`cat_${asset.category}`)) : null,
+        el("span", { class: "pick-fit" }, t("pick_fit", { ceiling: result.profile.ceiling })))),
+    metric,
+    rest.length ? el("p", { class: "pick-more" }, t("pick_more", { n: rest.length }),
+      ...rest.slice(0, 2).flatMap((item, i) => [i ? " · " : " ", el("a", { href: href(item.isin) }, item.name)])) : null,
+    el("div", { class: "pick-actions" },
+      el("button", { type: "button", class: "btn primary", onclick: () => openPick(entry, true) }, t("pick_see", { n: result.items.length })),
+      el("button", { type: "button", class: "btn ghost", onclick: () => openPick(entry, false) }, t("pick_mine")))));
+
+  const card = document.getElementById("pick-card");
+  card.dataset.ceiling = String(result.profile.ceiling);
+  document.dispatchEvent(new CustomEvent("ceilingchange"));
+}
+
+function showPick(i) {
+  pick.index = i;
+  renderPickTabs();
+  renderPick();
+  schedulePick();
+}
+
+function schedulePick() {
+  clearTimeout(pick.timer);
+  const card = document.getElementById("pick-card");
+  const rotating = pick.auto && !pick.paused && pick.results.length > 1
+    && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  card.classList.toggle("rotating", rotating);
+  card.style.setProperty("--rotate", `${PICK_ROTATE_MS}ms`);
+  if (rotating) pick.timer = setTimeout(() => showPick((pick.index + 1) % pick.results.length), PICK_ROTATE_MS);
+}
+
+// "See the suggestions" runs the demo on this portfolio; "With my portfolio" goes to the search box.
+function openPick(entry, run) {
+  pick.auto = false;
+  schedulePick();
+  if (!run) {
+    document.getElementById("ask").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("query").focus({ preventScroll: true });
+    return;
   }
-  for (const edge of graph.data.edges) edge.node.classList.toggle("out", edge.dot.k > k);
-  graph.svg.setAttribute("aria-label", t("graph_label"));
-  graph.svg.querySelectorAll("[data-key]").forEach((node) => { node.textContent = t(node.dataset.key); });
-  document.getElementById("ceiling-label").textContent = t("ceiling_label", { n: k });
-  document.getElementById("graph-caption").textContent = t("graph_caption", { kept: fmt(kept), total: fmt(graph.data.dots.length) });
+  const assets = entry.holdings.map((isin) => pick.catalog.get(isin));
+  if (typeof loadPortfolio === "function") loadPortfolio(assets, entry.scenario.level, true);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const slider = document.getElementById("ceiling");
-  slider.addEventListener("input", () => { graph.ceiling = Number(slider.value); updateCeiling(); });
+  const card = document.getElementById("pick-card");
+  const pause = (on) => { pick.paused = on; schedulePick(); };
+  card.addEventListener("pointerenter", () => pause(true));
+  card.addEventListener("pointerleave", () => pause(false));
+  card.addEventListener("focusin", () => pause(true));
+  card.addEventListener("focusout", (event) => { if (!card.contains(event.relatedTarget)) pause(false); });
   try {
-    drawGraph(buildGraph(await api("assets")));
-    updateCeiling();
+    await loadPicks();
+    card.classList.add("ready");
+    showPick(0);
   } catch (_) {
-    document.getElementById("graph-card").hidden = true;  // no API: the copy still stands on its own
+    card.hidden = true;  // no API: the copy still stands on its own
+    document.dispatchEvent(new CustomEvent("ceilingchange"));
   }
 });
 
-document.addEventListener("langchange", updateCeiling);
+document.addEventListener("langchange", () => { if (pick.results.length) { renderPickTabs(); renderPick(); } });

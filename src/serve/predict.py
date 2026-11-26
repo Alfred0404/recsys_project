@@ -71,8 +71,11 @@ class Recommender:
             candidates = mpt_rerank(candidates, relevance, holdings, self.mu, self.sigma, profile.gamma, self.mpt_weight)
             impact = portfolio_impact(candidates[:k], holdings, self.mu, self.sigma, profile.gamma)
             changes = impact["variance_change"].to_dict()
+            # Annual volatility of the portfolio before and after a 10 % allocation, for display.
+            volatility = {isin: (float(np.sqrt(row.variance_before)), float(np.sqrt(row.variance_after)))
+                          for isin, row in impact.iterrows()}
         else:
-            changes = {}
+            changes, volatility = {}, {}
         items = [
             {
                 "isin": isin,
@@ -80,6 +83,8 @@ class Recommender:
                 "score": relevance[isin],
                 "risk_class": self.risk_classes[isin],
                 "variance_change": float(changes[isin]) if isin in changes else None,
+                "volatility_before": volatility[isin][0] if isin in volatility else None,
+                "volatility_after": volatility[isin][1] if isin in volatility else None,
                 "explanation": explain(self.risk_classes[isin], changes.get(isin)),
             }
             for isin in candidates[:k]

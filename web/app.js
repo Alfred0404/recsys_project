@@ -116,6 +116,17 @@ function addExample() {
   for (const asset of picks) addChip(asset, { keepOpen: false });
 }
 
+// Called by the hero card: replace the portfolio, answer every question at `level`, and optionally run.
+function loadPortfolio(assets, level, run) {
+  state.chips.clear();
+  for (const asset of assets) if (asset) addChip(asset, { keepOpen: false });
+  for (const q of QUESTIONS) state.answers[q] = level;
+  const quiz = document.querySelector('input[name="profile-mode"][value="questionnaire"]');
+  if (quiz && !quiz.checked) { quiz.checked = true; quiz.dispatchEvent(new Event("change")); } else renderOptions();
+  if (run) document.getElementById("form").requestSubmit();
+  else document.getElementById("ask").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function renderChips() {
   const box = document.getElementById("chips");
   if (!state.chips.size) {

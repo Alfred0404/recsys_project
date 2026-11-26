@@ -37,13 +37,13 @@
       <p class="disclaimer" data-i18n="disclaimer"></p>
     </div>
 
-    <figure class="graph-card" id="graph-card">
-      <div class="graph" id="graph"></div>
-      <div class="ceiling-control">
-        <label for="ceiling" id="ceiling-label"></label>
-        <input id="ceiling" type="range" min="1" max="7" step="1" value="4">
+    <figure class="pick-card" id="pick-card">
+      <div class="pick-head">
+        <p class="pick-live"><span class="pick-dot" aria-hidden="true"></span><span data-i18n="pick_live"></span></p>
+        <div class="pick-tabs" id="pick-tabs" role="tablist" data-i18n-label="pick_tabs"></div>
       </div>
-      <figcaption id="graph-caption"></figcaption>
+      <div class="pick-body" id="pick-body" role="tabpanel" aria-live="polite"></div>
+      <figcaption data-i18n="pick_caption"></figcaption>
     </figure>
   </section>
   </div>

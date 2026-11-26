@@ -37,6 +37,7 @@ def test_live_recommendation_filters_holds_and_risk_and_logs_in_sqlite(demo_arti
     assert result["profile"]["ceiling"] == 3
     assert {item["isin"] for item in result["items"]} == {"B", "D"}
     assert all(item["variance_change"] < 0 for item in result["items"])
+    assert all(0 <= item["volatility_after"] < item["volatility_before"] for item in result["items"])
 
     session_id = str(uuid4())
     response = client.post("/log_interaction", json={"session_id": session_id, "event": "recommendation_viewed"})
@@ -53,6 +54,7 @@ def test_unseen_portfolios_use_popularity_and_invalid_amounts_are_rejected(demo_
     assert result["unrecognized_isins"] == ["UNKNOWN"]
     assert result["items"][0]["isin"] == "B"
     assert result["items"][0]["variance_change"] is None
+    assert result["items"][0]["volatility_before"] is None
     assert client.post("/recommend", json={"holdings": {"A": -2}}).status_code == 422
 
 
