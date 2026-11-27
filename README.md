@@ -187,6 +187,7 @@ questionnaire / text ─► src/llm : profile (ceiling, γ) ─► src/serve : e
 | `RECSYS_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama address |
 | `RECSYS_OPENAI_COMPAT_URL` | none | Enables the LLM through a Chat Completions compatible server (full URL) |
 | `RECSYS_PROFILE_MODEL` | `local` | Model name sent to that server |
+| `RECSYS_LLM_TIMEOUT` | `20` | Seconds allowed for each LLM call. Raise it (e.g. `90`) when the model does not fit in GPU memory: profile review makes up to three calls |
 
 ## Results
 

@@ -109,3 +109,34 @@ def test_paired_metrics_share_targets_and_missing_output_counts_as_a_miss(monkey
     assert result["paired_sample"]["bank"]["macro_f1"] == 0.25
     no_bank = sample.assign(bank=pd.NA)
     assert evaluate_sample(no_bank, facts, None)["paired_sample"]["bank"]["accuracy"] is None
+
+
+def test_llm_timeout_comes_from_the_environment(monkeypatch):
+    seen = {}
+
+    class Reply:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"response": "{}"}
+
+    def fake_post(url, json, timeout):
+        seen["timeout"] = timeout
+        return Reply()
+
+    monkeypatch.setenv("RECSYS_OLLAMA_MODEL", "test-model")
+    monkeypatch.delenv("RECSYS_OPENAI_COMPAT_URL", raising=False)
+    monkeypatch.setattr(reflection.requests, "post", fake_post)
+
+    monkeypatch.delenv("RECSYS_LLM_TIMEOUT", raising=False)
+    reflection.configured_generator()("prompt")
+    assert seen["timeout"] == 20
+
+    monkeypatch.setenv("RECSYS_LLM_TIMEOUT", "90")
+    reflection.configured_generator()("prompt")
+    assert seen["timeout"] == 90
+
+    monkeypatch.setenv("RECSYS_LLM_TIMEOUT", "0")
+    with pytest.raises(ValueError):
+        reflection.configured_generator()
