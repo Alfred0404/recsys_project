@@ -127,6 +127,10 @@ def configured_generator() -> Callable[[str], dict] | None:
     model = os.getenv("RECSYS_OLLAMA_MODEL")
     if not chat_url and not model:
         return None
+    # A 7B model partly offloaded to CPU can need more than 20 s for one reply.
+    timeout = float(os.getenv("RECSYS_LLM_TIMEOUT", "20"))
+    if not isfinite(timeout) or timeout <= 0:
+        raise ValueError("RECSYS_LLM_TIMEOUT must be a positive number of seconds.")
 
     def generate(prompt: str) -> dict:
         if chat_url:
@@ -135,7 +139,7 @@ def configured_generator() -> Callable[[str], dict] | None:
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"}, "max_tokens": 192, "temperature": 0,
             }
-            response = requests.post(chat_url, json=payload, timeout=20)
+            response = requests.post(chat_url, json=payload, timeout=timeout)
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
         else:
@@ -144,7 +148,7 @@ def configured_generator() -> Callable[[str], dict] | None:
                 "model": model, "prompt": prompt, "format": "json", "stream": False,
                 "options": {"temperature": 0, "num_predict": 192},
             }
-            response = requests.post(f"{url}/api/generate", json=payload, timeout=20)
+            response = requests.post(f"{url}/api/generate", json=payload, timeout=timeout)
             response.raise_for_status()
             content = response.json()["response"]
         return json.loads(content)
